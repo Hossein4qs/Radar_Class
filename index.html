@@ -79,25 +79,9 @@ main{ flex:1; padding:2px 14px 18px; }
 /* ---------- result cards ---------- */
 .result-count{ font-size:12.5px; color:var(--text-muted); margin:14px 2px 8px; }
 .card-list{ display:flex; flex-direction:column; gap:9px; }
-
-/* ---------- rubber band + stagger entrance for course cards ---------- */
-@keyframes cardRubberIn{
-  0%{ opacity:0; transform:scale3d(.4,.4,1); }
-  40%{ opacity:1; transform:scale3d(1.14,.86,1); }
-  55%{ transform:scale3d(.92,1.08,1); }
-  70%{ transform:scale3d(1.06,.96,1); }
-  85%{ transform:scale3d(.98,1.02,1); }
-  100%{ opacity:1; transform:scale3d(1,1,1); }
-}
 .course-card{
   text-align:right; width:100%; background:var(--surface); border:1px solid var(--border);
   border-radius:var(--radius); padding:12px 14px; cursor:pointer;
-  animation:cardRubberIn .62s cubic-bezier(.22,.9,.32,1.1) both;
-  animation-delay:var(--stagger-delay,0ms);
-  transform-origin:center;
-}
-@media (prefers-reduced-motion: reduce){
-  .course-card{ animation:none; }
 }
 .course-card .title{ font-weight:700; font-size:15px; }
 .course-card .meta{ color:var(--text-muted); font-size:13px; margin-top:3px; }
@@ -231,22 +215,6 @@ button.place-group-title{ border:0; background:none; width:100%; padding:0; font
 .sheet .block-title{ font-size:13px; font-weight:700; margin:14px 0 6px; color:var(--text-muted); }
 .sheet pre{ white-space:pre-wrap; font-family:inherit; font-size:13.5px; background:var(--surface-2); border-radius:var(--radius-sm); padding:10px 12px; margin:0; line-height:1.8; }
 .sheet-close{ position:absolute; left:16px; top:16px; width:32px; height:32px; border-radius:50%; border:1px solid var(--border); background:var(--surface-2); display:flex; align-items:center; justify-content:center; cursor:pointer; }
-
-/* ---------- shared element transition: course card <-> sheet ---------- */
-::view-transition-group(shared-sheet){
-  animation-duration:.42s;
-  animation-timing-function:cubic-bezier(.22,.9,.28,1);
-}
-::view-transition-old(shared-sheet),
-::view-transition-new(shared-sheet){
-  animation-duration:.42s;
-  animation-timing-function:cubic-bezier(.22,.9,.28,1);
-  mix-blend-mode:normal;
-}
-::view-transition-old(root),
-::view-transition-new(root){
-  animation-duration:.22s;
-}
 .carousel-nav{ display:flex; align-items:center; justify-content:space-between; margin:0 0 14px; padding-inline-end:40px; }
 .car-btn{
   width:34px; height:34px; border-radius:50%; border:1px solid var(--border); background:var(--surface-2);
@@ -262,22 +230,34 @@ button.place-group-title{ border:0; background:none; width:100%; padding:0; font
   position:sticky; bottom:0; display:flex; border-top:1px solid var(--border);
   background:var(--surface); padding-bottom:var(--safe-b);
 }
-/* ---------- shared layout pill that morphs between selected tabs ---------- */
+/* ردیاب لایه‌ی مشترک (Shared Layout): یه پیل که بین تب‌ها می‌لغزه */
 .tab-indicator{
-  position:absolute; top:6px; bottom:calc(var(--safe-b) + 6px); left:0;
-  background:var(--free-soft); border-radius:11px; z-index:0; pointer-events:none;
-  transform:translateX(0); width:0;
-  transition:transform .38s cubic-bezier(.34,1.4,.62,1), width .38s cubic-bezier(.34,1.4,.62,1), background-color .25s ease;
+  position:absolute; top:6px; bottom:6px; inset-inline-start:0;
+  width:calc(100% / 3); border-radius:12px; background:var(--free-soft); z-index:0;
+  transition:inset-inline-start .32s cubic-bezier(.4,0,.2,1);
+  pointer-events:none;
 }
-.tab-indicator.no-anim{ transition:none; }
 .tab{
   position:relative; z-index:1;
   flex:1; display:flex; flex-direction:column; align-items:center; gap:3px; padding:9px 4px 8px;
   border:0; background:none; color:var(--text-muted); cursor:pointer;
 }
-.tab svg{ width:21px; height:21px; stroke:currentColor; fill:none; stroke-width:1.7; }
+.tab svg{ width:21px; height:21px; stroke:currentColor; fill:none; stroke-width:1.7; transition:transform .32s cubic-bezier(.4,0,.2,1); }
 .tab span{ font-size:11px; font-weight:600; }
 .tab.sel{ color:var(--free); }
+.tab.sel svg{ transform:translateY(-1px) scale(1.06); }
+
+/* ---------- Shared Element Transition (کارت درس ↔ کشوی جزئیات) ---------- */
+.sheet.vt-active{ transition:none !important; }
+::view-transition-group(course-detail){
+  animation-duration:.38s;
+  animation-timing-function:cubic-bezier(.2,.8,.2,1);
+}
+::view-transition-old(course-detail),
+::view-transition-new(course-detail){
+  animation-duration:.38s;
+  animation-timing-function:cubic-bezier(.2,.8,.2,1);
+}
 
 @media (min-width:600px){
   .app{ border-inline:1px solid var(--border); }
@@ -330,6 +310,7 @@ button.place-group-title{ border:0; background:none; width:100%; padding:0; font
   </main>
 
   <nav class="tabbar">
+    <div class="tab-indicator" id="tabIndicator" aria-hidden="true"></div>
     <button class="tab sel" data-view="search">
       <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3" stroke-linecap="round"/></svg>
       <span>جستجو</span>
@@ -443,48 +424,24 @@ SESSIONS.forEach(function(s){ TIME_SET[s.start]=1; TIME_SET[s.end]=1; });
 var TIME_MARKS = Object.keys(TIME_SET).map(Number).sort(function(a,b){return a-b;});
 if(TIME_MARKS.length===0){ for(var h=8; h<=20; h++) TIME_MARKS.push(h*60); }
 
-/* ================= سوییچ تب‌ها (با افکت Shared Layout) ================= */
-var tabbarEl = document.querySelector(".tabbar");
+/* ================= سوییچ تب‌ها ================= */
 var tabs = document.querySelectorAll(".tab");
 var views = { search: document.getElementById("view-search"), room: document.getElementById("view-room"), free: document.getElementById("view-free") };
-
-// پیل مشترکی که بین تب‌ها جابه‌جا و هم‌شکل می‌شه (شبیه‌سازی Shared Layout)
-var tabIndicator = document.createElement("div");
-tabIndicator.className = "tab-indicator";
-tabbarEl.insertBefore(tabIndicator, tabbarEl.firstChild);
-
-function moveIndicatorTo(tabEl, animate){
-  if(!tabEl) return;
-  var barRect = tabbarEl.getBoundingClientRect();
-  var elRect = tabEl.getBoundingClientRect();
-  if(!animate) tabIndicator.classList.add("no-anim");
-  tabIndicator.style.width = elRect.width + "px";
-  tabIndicator.style.transform = "translateX(" + (elRect.left - barRect.left) + "px)";
-  if(!animate){
-    void tabIndicator.offsetWidth; // reflow تا انیمیشن غیرفعال واقعاً اعمال بشه
-    tabIndicator.classList.remove("no-anim");
-  }
+var TAB_ORDER = ["search","room","free"];
+var tabIndicator = document.getElementById("tabIndicator");
+function moveTabIndicator(name){
+  var idx = TAB_ORDER.indexOf(name);
+  if(idx === -1 || !tabIndicator) return;
+  tabIndicator.style.insetInlineStart = "calc(" + idx + " * (100% / " + TAB_ORDER.length + "))";
 }
-
 function activateTab(name){
   tabs.forEach(function(b){ b.classList.toggle("sel", b.dataset.view === name); });
   Object.keys(views).forEach(function(k){ views[k].classList.toggle("active", k === name); });
+  moveTabIndicator(name);
 }
+moveTabIndicator("search");
 tabs.forEach(function(btn){
-  btn.addEventListener("click", function(){
-    activateTab(btn.dataset.view);
-    moveIndicatorTo(btn, true);
-  });
-});
-// موقعیت اولیه‌ی پیل رو بعد از چیدمان کامل صفحه (بدون انیمیشن) تنظیم می‌کنیم
-function initIndicatorPosition(){
-  var sel = document.querySelector(".tab.sel");
-  moveIndicatorTo(sel, false);
-}
-requestAnimationFrame(function(){ requestAnimationFrame(initIndicatorPosition); });
-window.addEventListener("resize", function(){
-  var sel = document.querySelector(".tab.sel");
-  moveIndicatorTo(sel, false);
+  btn.addEventListener("click", function(){ activateTab(btn.dataset.view); });
 });
 
 /* ================= تم روشن/تیره ================= */
@@ -511,70 +468,8 @@ function openSheet(html){
   showSheetEl();
 }
 function closeSheet(){ sheet.classList.remove("show"); backdrop.classList.remove("show"); mergedState = null; }
-
-/* ---- افکت Shared Element Transition: کارتِ درس <-> بات‌شیتِ توضیحات ---- */
-var VT_SUPPORTED = typeof document.startViewTransition === "function";
-var lastSheetTrigger = null; // آخرین کارت/بلوکی که باعث باز شدن شیت شده، برای مورف برگشتی موقع بستن
-
-function openSheetShared(triggerEl, html){
-  lastSheetTrigger = (triggerEl && document.body.contains(triggerEl)) ? triggerEl : null;
-  if(!VT_SUPPORTED){ openSheet(html); return; }
-  if(lastSheetTrigger) lastSheetTrigger.style.viewTransitionName = "shared-sheet";
-  var vt;
-  try{
-    vt = document.startViewTransition(function(){
-      openSheet(html);
-      if(lastSheetTrigger) lastSheetTrigger.style.viewTransitionName = "";
-      sheet.style.viewTransitionName = "shared-sheet";
-    });
-  }catch(e){
-    openSheet(html);
-    if(lastSheetTrigger) lastSheetTrigger.style.viewTransitionName = "";
-    return;
-  }
-  vt.finished.catch(function(){}).finally(function(){ sheet.style.viewTransitionName = ""; });
-}
-function openMergedSheetShared(triggerEl, idxs){
-  lastSheetTrigger = (triggerEl && document.body.contains(triggerEl)) ? triggerEl : null;
-  if(!VT_SUPPORTED){ openMergedSheet(idxs); return; }
-  if(lastSheetTrigger) lastSheetTrigger.style.viewTransitionName = "shared-sheet";
-  var vt;
-  try{
-    vt = document.startViewTransition(function(){
-      openMergedSheet(idxs);
-      if(lastSheetTrigger) lastSheetTrigger.style.viewTransitionName = "";
-      sheet.style.viewTransitionName = "shared-sheet";
-    });
-  }catch(e){
-    openMergedSheet(idxs);
-    if(lastSheetTrigger) lastSheetTrigger.style.viewTransitionName = "";
-    return;
-  }
-  vt.finished.catch(function(){}).finally(function(){ sheet.style.viewTransitionName = ""; });
-}
-function closeSheetShared(){
-  var triggerEl = lastSheetTrigger, validTrigger = triggerEl && document.body.contains(triggerEl);
-  lastSheetTrigger = null;
-  if(!VT_SUPPORTED){ closeSheet(); return; }
-  sheet.style.viewTransitionName = "shared-sheet";
-  var vt;
-  try{
-    vt = document.startViewTransition(function(){
-      closeSheet();
-      sheet.style.viewTransitionName = "";
-      if(validTrigger) triggerEl.style.viewTransitionName = "shared-sheet";
-    });
-  }catch(e){
-    closeSheet();
-    sheet.style.viewTransitionName = "";
-    return;
-  }
-  vt.finished.catch(function(){}).finally(function(){
-    if(validTrigger) triggerEl.style.viewTransitionName = "";
-  });
-}
-document.getElementById("sheetClose").addEventListener("click", closeSheetShared);
-backdrop.addEventListener("click", closeSheetShared);
+document.getElementById("sheetClose").addEventListener("click", closeSheetTransition);
+backdrop.addEventListener("click", closeSheetTransition);
 
 function courseDetailHTML(course){
   var cap = course["ظرفیت"], reg = course["ثبت نام شده"];
@@ -629,6 +524,71 @@ function moveMerged(delta){
   mergedState.pos = next;
   renderMergedCourse();
 }
+/* ================= Shared Element Transition (کارت ↔ کشوی جزئیات) ================= */
+// از View Transitions API استفاده می‌کنیم: به کارت/بلاکی که کلیک شده و به بات‌شیت
+// یه view-transition-name مشترک می‌دیم تا مرورگر خودش انیمیشن مورف بین‌شون رو بسازه.
+// اگه مرورگر ازش پشتیبانی نکنه، به همون باز/بسته شدن سادهٔ قبلی برمی‌گردیم.
+var lastSheetTrigger = null;
+var SHARED_NAME = "course-detail";
+function clearSharedNames(){
+  document.querySelectorAll(".vt-shared").forEach(function(el){
+    el.style.viewTransitionName = "";
+    el.classList.remove("vt-shared");
+  });
+}
+function withSharedTransition(trigger, mutate){
+  if(!document.startViewTransition || !trigger){
+    mutate();
+    lastSheetTrigger = trigger || null;
+    return;
+  }
+  clearSharedNames();
+  trigger.style.viewTransitionName = SHARED_NAME;
+  trigger.classList.add("vt-shared");
+  sheet.classList.add("vt-active");
+  var vt = document.startViewTransition(function(){
+    trigger.style.viewTransitionName = "";
+    trigger.classList.remove("vt-shared");
+    mutate();
+    sheet.style.viewTransitionName = SHARED_NAME;
+    sheet.classList.add("vt-shared");
+  });
+  lastSheetTrigger = trigger;
+  vt.finished.finally(function(){
+    sheet.style.viewTransitionName = "";
+    sheet.classList.remove("vt-shared", "vt-active");
+  });
+}
+function openSheetTransition(trigger, html){
+  withSharedTransition(trigger, function(){ openSheet(html); });
+}
+function openMergedSheetTransition(trigger, idxs){
+  withSharedTransition(trigger, function(){ openMergedSheet(idxs); });
+}
+function closeSheetTransition(){
+  var trig = lastSheetTrigger;
+  lastSheetTrigger = null;
+  if(!document.startViewTransition || !trig || !document.body.contains(trig)){
+    closeSheet();
+    return;
+  }
+  clearSharedNames();
+  sheet.style.viewTransitionName = SHARED_NAME;
+  sheet.classList.add("vt-shared", "vt-active");
+  var vt = document.startViewTransition(function(){
+    sheet.style.viewTransitionName = "";
+    sheet.classList.remove("vt-shared");
+    closeSheet();
+    trig.style.viewTransitionName = SHARED_NAME;
+    trig.classList.add("vt-shared");
+  });
+  vt.finished.finally(function(){
+    trig.style.viewTransitionName = "";
+    trig.classList.remove("vt-shared");
+    sheet.classList.remove("vt-active");
+  });
+}
+
 // سوایپ روی بات‌شیت برای رفتن به درس هم‌زمان بعدی/قبلی
 var touchStartX = null;
 sheet.addEventListener("touchstart", function(e){ touchStartX = e.touches[0].clientX; }, {passive:true});
@@ -642,7 +602,7 @@ sheet.addEventListener("touchend", function(e){
 // کلیک روی کارت‌های داخل خودِ بات‌شیت (مثلاً از نتایج جستجو که داخل شیت باز شدن) هم جزئیات کامل رو باز کنه
 sheetContent.addEventListener("click", function(e){
   var btn = e.target.closest(".course-card"); if(!btn) return;
-  openSheetShared(btn, courseDetailHTML(COURSES[Number(btn.dataset.idx)]));
+  openSheetTransition(btn, courseDetailHTML(COURSES[Number(btn.dataset.idx)]));
 });
 
 /* ================= تب جستجو ================= */
@@ -668,14 +628,12 @@ function runSearch(){
     return;
   }
   var html = "";
-  matches.forEach(function(idx, pos){
+  matches.forEach(function(idx){
     var c = COURSES[idx];
     var cap = c["ظرفیت"], reg = c["ثبت نام شده"];
     var full = cap!=null && reg!=null && reg>=cap;
     var firstLine = (c["زمان و مكان ارائه متن"]||"").split("\n")[0];
-    // استگرِ ورود کارت‌ها: هر کارت کمی دیرتر از قبلی می‌آد (حداکثر تا ۱۴ کارت اول)
-    var delay = Math.min(pos, 14) * 38;
-    html += "<button class='course-card' data-idx='"+idx+"' style='--stagger-delay:"+delay+"ms'>"
+    html += "<button class='course-card' data-idx='"+idx+"'>"
       + "<div class='title'>"+escapeHTML(c["نام درس"]||"")+"</div>"
       + "<div class='meta'>"+escapeHTML(c["نام استاد"]||"")+"</div>"
       + "<div class='row2'>"
@@ -688,7 +646,7 @@ function runSearch(){
 }
 searchResults.addEventListener("click", function(e){
   var btn = e.target.closest(".course-card"); if(!btn) return;
-  openSheetShared(btn, courseDetailHTML(COURSES[Number(btn.dataset.idx)]));
+  openSheetTransition(btn, courseDetailHTML(COURSES[Number(btn.dataset.idx)]));
 });
 
 /* ================= تب وضعیت کلاس ================= */
@@ -786,8 +744,8 @@ function selectRoom(place){
   roomResult.querySelectorAll(".block").forEach(function(b){
     b.addEventListener("click", function(){
       var idxs = b.dataset.idxs.split(",").map(Number);
-      if(idxs.length === 1) openSheetShared(b, courseDetailHTML(COURSES[idxs[0]]));
-      else openMergedSheetShared(b, idxs);
+      if(idxs.length === 1) openSheetTransition(b, courseDetailHTML(COURSES[idxs[0]]));
+      else openMergedSheetTransition(b, idxs);
     });
   });
 }
