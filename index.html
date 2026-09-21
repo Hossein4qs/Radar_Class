@@ -222,8 +222,21 @@ button.place-group-title{ border:0; background:none; width:100%; padding:0; font
 }
 .car-btn:disabled{ opacity:.3; cursor:default; }
 .car-count{ font-size:12.5px; color:var(--text-muted); font-weight:600; }
-.car-slide{ animation:carIn .16s ease; }
-@keyframes carIn{ from{ opacity:0; transform:translateX(8px);} to{ opacity:1; transform:translateX(0);} }
+/* افکت Book Flip برای سوییچ بین چند درس هم‌زمان */
+.car-flip-stage{ perspective:1300px; }
+.car-slide{
+  position:relative;
+  transform-style:preserve-3d;
+  transform-origin:100% 50%; /* لولا/شیرازه‌ی کتاب روی لبه‌ی راست (هم‌سو با کتاب‌های فارسی) */
+  backface-visibility:hidden;
+  transition:transform .32s cubic-bezier(.45,.05,.35,1), opacity .32s ease;
+  opacity:1;
+}
+.car-slide.flip-leave-next{ transform:rotateY(-108deg); opacity:.25; }
+.car-slide.flip-leave-prev{ transform:rotateY(108deg); opacity:.25; }
+.car-slide.flip-enter-next{ transform:rotateY(96deg); opacity:.4; }
+.car-slide.flip-enter-prev{ transform:rotateY(-96deg); opacity:.4; }
+.car-slide.flip-settle{ transform:rotateY(0deg); opacity:1; }
 
 /* ---------- tab bar ---------- */
 .tabbar{
@@ -503,7 +516,7 @@ function openMergedSheet(idxs){
   renderMergedCourse();
   showSheetEl();
 }
-function renderMergedCourse(){
+function renderMergedCourse(dir){
   if(!mergedState) return;
   var idxs = mergedState.idxs, pos = mergedState.pos;
   var c = COURSES[idxs[pos]];
@@ -512,17 +525,38 @@ function renderMergedCourse(){
     + "<span class='car-count'>"+(pos+1)+" از "+idxs.length+" درس هم‌زمان</span>"
     + "<button class='car-btn' id='carNext'"+(pos===idxs.length-1?" disabled":"")+" aria-label='درس بعدی'>‹</button>"
     + "</div>";
-  sheetContent.innerHTML = nav + "<div class='car-slide'>" + courseDetailHTML(c) + "</div>";
+  var enterClass = dir === "next" ? "flip-enter-next" : dir === "prev" ? "flip-enter-prev" : "";
+  sheetContent.innerHTML = nav
+    + "<div class='car-flip-stage'><div class='car-slide"+(enterClass?" "+enterClass:"")+"' id='carSlide'>"
+    + courseDetailHTML(c) + "</div></div>";
   var prevBtn = document.getElementById("carPrev"), nextBtn = document.getElementById("carNext");
   if(prevBtn) prevBtn.addEventListener("click", function(){ moveMerged(-1); });
   if(nextBtn) nextBtn.addEventListener("click", function(){ moveMerged(1); });
+  var newSlide = document.getElementById("carSlide");
+  if(newSlide && enterClass){
+    void newSlide.offsetWidth; // فورس ریفلو تا ترنزیشن از حالت چرخیده‌ی اولیه واقعاً اجرا بشه
+    requestAnimationFrame(function(){
+      newSlide.classList.remove(enterClass);
+      newSlide.classList.add("flip-settle");
+    });
+  }
 }
 function moveMerged(delta){
   if(!mergedState) return;
   var next = mergedState.pos + delta;
   if(next<0 || next>=mergedState.idxs.length) return;
+  var dir = delta > 0 ? "next" : "prev";
+  var oldSlide = document.getElementById("carSlide");
   mergedState.pos = next;
-  renderMergedCourse();
+  if(!oldSlide){ renderMergedCourse(); return; }
+  var done = false;
+  function finishLeave(){
+    if(done) return; done = true;
+    renderMergedCourse(dir);
+  }
+  oldSlide.addEventListener("transitionend", finishLeave, {once:true});
+  setTimeout(finishLeave, 260); // پشتیبان برای وقتی رویداد ترنزیشن فایر نمی‌شه
+  oldSlide.classList.add(dir === "next" ? "flip-leave-next" : "flip-leave-prev");
 }
 /* ================= Shared Element Transition (کارت ↔ کشوی جزئیات) ================= */
 // از View Transitions API استفاده می‌کنیم: به کارت/بلاکی که کلیک شده و به بات‌شیت
