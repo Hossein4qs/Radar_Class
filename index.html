@@ -120,19 +120,38 @@ main{ flex:1; padding:2px 14px 18px; }
 .room-sub{ font-size:12.5px; color:var(--text-muted); margin:0 2px 10px; }
 
 .grid-wrap{ overflow-x:auto; border:1px solid var(--border); border-radius:var(--radius); background:var(--surface); }
-.grid-inner{ display:grid; min-width:100%; }
-.grid-head{ display:grid; position:sticky; top:0; background:var(--surface); z-index:2; border-bottom:1px solid var(--border); }
-.grid-head .cell{ text-align:center; font-size:12px; font-weight:700; padding:9px 2px; color:var(--text-muted); }
-.grid-body{ display:grid; position:relative; }
-.hour-col{ position:relative; border-inline-end:1px solid var(--border); }
-.hour-col .lbl{ position:absolute; inset-inline:0; transform:translateY(-50%); font-size:10.5px; color:var(--text-muted); text-align:center; }
-.day-col{ position:relative; border-inline-end:1px solid var(--border); background-image:repeating-linear-gradient(to bottom, transparent 0, transparent calc(100%/var(--hrs) - 1px), var(--border) calc(100%/var(--hrs) - 1px), var(--border) calc(100%/var(--hrs))); }
-.day-col:last-child{ border-inline-end:0; }
-.block{
-  position:absolute; inset-inline:2px; border-radius:7px; padding:4px 5px; overflow:hidden;
-  background:var(--busy-soft); border:1px solid var(--busy); cursor:pointer; text-align:right;
+.sched{ display:flex; flex-direction:column; min-width:100%; width:max-content; }
+.sched-row{ display:flex; border-bottom:1px solid var(--border); }
+.sched-row:last-child{ border-bottom:0; }
+.day-lbl{
+  flex:none; width:64px; display:flex; align-items:center; justify-content:center;
+  font-size:12px; font-weight:700; color:var(--text-muted); background:var(--surface);
+  border-inline-end:1px solid var(--border);
+  position:sticky; right:0; z-index:3;
 }
-.block .b-title{ font-size:10.5px; font-weight:700; color:var(--busy); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.sched-head .day-lbl, .sched-head .track{ background:var(--surface-2); }
+.track{ position:relative; flex:1; min-width:var(--track-w); }
+.sched-head .track{ height:30px; }
+.sched-head .day-lbl{ height:30px; }
+.hour-lbl{
+  position:absolute; top:0; bottom:0; display:flex; align-items:center;
+  padding-inline-start:5px; font-size:10.5px; color:var(--text-muted); white-space:nowrap;
+}
+.sched-row .track{
+  height:62px;
+  background-image:linear-gradient(to left, var(--border) 1px, transparent 1px);
+  background-size:calc(100%/var(--hrs)) 100%; background-repeat:repeat-x; background-position:100% 0;
+}
+.sched-row .day-lbl{ height:62px; }
+.block{
+  position:absolute; top:5px; bottom:5px; border-radius:7px; padding:4px 6px; overflow:hidden;
+  background:var(--busy-soft); border:1px solid var(--busy); cursor:pointer; text-align:right;
+  display:flex; flex-direction:column; justify-content:center; gap:1px;
+}
+.block .b-title{
+  font-size:10.5px; font-weight:700; line-height:1.45; color:var(--busy);
+  display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;
+}
 .block .b-sub{ font-size:9.5px; color:var(--busy); opacity:.8; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .block .b-count{
   position:absolute; top:2px; left:2px; background:var(--busy); color:#fff; font-size:9px; font-weight:700;
@@ -167,7 +186,9 @@ button.place-group-title{ border:0; background:none; width:100%; padding:0; font
 .place-item{
   display:flex; align-items:center; justify-content:space-between; background:var(--surface);
   border:1px solid var(--border); border-radius:var(--radius-sm); padding:11px 14px;
+  width:100%; text-align:right; cursor:pointer;
 }
+.place-item:active{ background:var(--surface-2); }
 .place-item .name{ font-weight:600; font-size:14px; }
 .place-item .dot{ width:9px; height:9px; border-radius:50%; background:var(--free); flex:none; }
 
@@ -384,12 +405,12 @@ if(TIME_MARKS.length===0){ for(var h=8; h<=20; h++) TIME_MARKS.push(h*60); }
 /* ================= سوییچ تب‌ها ================= */
 var tabs = document.querySelectorAll(".tab");
 var views = { search: document.getElementById("view-search"), room: document.getElementById("view-room"), free: document.getElementById("view-free") };
+function activateTab(name){
+  tabs.forEach(function(b){ b.classList.toggle("sel", b.dataset.view === name); });
+  Object.keys(views).forEach(function(k){ views[k].classList.toggle("active", k === name); });
+}
 tabs.forEach(function(btn){
-  btn.addEventListener("click", function(){
-    tabs.forEach(function(b){ b.classList.remove("sel"); });
-    btn.classList.add("sel");
-    Object.keys(views).forEach(function(k){ views[k].classList.toggle("active", k===btn.dataset.view); });
-  });
+  btn.addEventListener("click", function(){ activateTab(btn.dataset.view); });
 });
 
 /* ================= تم روشن/تیره ================= */
@@ -560,67 +581,69 @@ function selectRoom(place){
     roomResult.innerHTML = "<div class='empty-state'>برنامه‌ای برای «"+escapeHTML(place)+"» پیدا نشد.</div>";
     return;
   }
-  var daysPresent = DAY_KEYS.filter(function(d){ return sessions.some(function(s){ return s.day===d; }); });
-  if(daysPresent.length===0) daysPresent = DAY_KEYS.slice(0,6);
+  // هر ردیف = یه روز هفته (شنبه تا پنج‌شنبه؛ جمعه فقط اگه کلاسی داشته باشه)
+  var daysShown = DAY_KEYS.filter(function(d){
+    return d !== "جمعه" || sessions.some(function(s){ return s.day === d; });
+  });
 
+  // هر ستون = یه ساعت
   var minStart = Math.min.apply(null, sessions.map(function(s){return s.start;}));
   var maxEnd   = Math.max.apply(null, sessions.map(function(s){return s.end;}));
-  minStart = Math.floor(minStart/60)*60 - 60; if(minStart<0) minStart=0;
-  maxEnd   = Math.ceil(maxEnd/60)*60 + 60;
-  var hrs = Math.max(1, Math.round((maxEnd-minStart)/60));
-  var pxPerMin = 1.05;
-  var totalH = (maxEnd-minStart)*pxPerMin;
+  minStart = Math.floor(minStart/60)*60; if(minStart<0) minStart=0;
+  maxEnd   = Math.ceil(maxEnd/60)*60;
+  if(maxEnd - minStart < 180){ maxEnd = minStart + 180; }
+  var span = maxEnd - minStart;
+  var hrs = Math.max(1, Math.round(span/60));
+  var pxPerHour = 78;
+  var trackW = hrs * pxPerHour;
+  function pct(min){ return (min/span*100).toFixed(4) + "%"; }
 
   var html = "<div class='room-title'>"+escapeHTML(place)+"</div>";
   html += "<div class='room-sub'>"+sessions.length+" جلسه در هفته</div>";
   html += "<div class='legend'><span><i class='busy'></i>پر</span><span><i class='free'></i>خالی</span></div>";
-  html += "<div class='grid-wrap'><div class='grid-inner' style='grid-template-columns:34px repeat("+daysPresent.length+",1fr);'>";
-  html += "<div class='grid-head' style='grid-column:1/-1; grid-template-columns:34px repeat("+daysPresent.length+",1fr); display:grid;'>";
-  html += "<div class='cell'></div>";
-  daysPresent.forEach(function(d){ html += "<div class='cell'>"+DAY_SHORT[d]+"</div>"; });
-  html += "</div>";
-  html += "<div class='grid-body' style='grid-column:1/-1; grid-template-columns:34px repeat("+daysPresent.length+",1fr); display:grid; height:"+totalH+"px;'>";
-  html += "<div class='hour-col'>";
-  for(var h=minStart; h<=maxEnd; h+=60){
-    var top = (h-minStart)*pxPerMin;
-    html += "<div class='lbl' style='top:"+top+"px;'>"+fmtMin(h)+"</div>";
+  html += "<div class='grid-wrap' id='gridWrap'><div class='sched' style='--track-w:"+trackW+"px; --hrs:"+hrs+";'>";
+
+  // سطر ساعت‌ها
+  html += "<div class='sched-row sched-head'><div class='day-lbl'></div><div class='track'>";
+  for(var h=minStart; h<maxEnd; h+=60){
+    html += "<div class='hour-lbl' style='right:"+pct(h-minStart)+";'>"+fmtMin(h)+"</div>";
   }
-  html += "</div>";
-  daysPresent.forEach(function(d){
-    html += "<div class='day-col' style='--hrs:"+hrs+";'>";
+  html += "</div></div>";
+
+  // یه ردیف برای هر روز
+  daysShown.forEach(function(d){
+    html += "<div class='sched-row'><div class='day-lbl'>"+DAY_LABEL[d]+"</div><div class='track'>";
     // جلسه‌هایی که دقیقاً هم‌روز و هم‌ساعت‌ان رو یکی می‌کنیم (اغلب یه کلاس که چون
     // ظرفیت/نامش برای چند رشته فرق داره، چندبار توی دیتابیس ثبت شده)
-    var daySessions = sessions.filter(function(s){return s.day===d;});
-    var groups = {};
-    var order = [];
-    daySessions.forEach(function(s){
+    var groups = {}, order = [];
+    sessions.filter(function(s){return s.day===d;}).forEach(function(s){
       var key = s.start+"-"+s.end;
       if(!groups[key]){ groups[key] = []; order.push(key); }
       groups[key].push(s);
     });
     order.forEach(function(key){
-      var group = groups[key];
-      var s0 = group[0];
-      var top = (s0.start-minStart)*pxPerMin, h2 = Math.max(20,(s0.end-s0.start)*pxPerMin);
+      var group = groups[key], s0 = group[0];
+      var pos = "right:calc("+pct(s0.start-minStart)+" + 1px); width:calc("+pct(s0.end-s0.start)+" - 2px);";
       var idxs = group.map(function(s){return s.courseIdx;}).join(",");
+      var time = fmtMin(s0.start)+"–"+fmtMin(s0.end);
       if(group.length === 1){
         var c = COURSES[s0.courseIdx];
-        html += "<button class='block' style='top:"+top+"px; height:"+h2+"px;' data-idxs='"+idxs+"'>"
+        html += "<button class='block' style='"+pos+"' data-idxs='"+idxs+"'>"
               + "<div class='b-title'>"+escapeHTML(c["نام درس"]||"")+"</div>"
-              + "<div class='b-sub'>"+fmtMin(s0.start)+"–"+fmtMin(s0.end)+"</div>"
+              + "<div class='b-sub'>"+time+"</div>"
               + "</button>";
       } else {
         var titles = group.map(function(s){ return COURSES[s.courseIdx]["نام درس"]||""; }).join(" / ");
-        html += "<button class='block' style='top:"+top+"px; height:"+h2+"px;' data-idxs='"+idxs+"'>"
+        html += "<button class='block' style='"+pos+"' data-idxs='"+idxs+"'>"
               + "<span class='b-count'>"+group.length+"</span>"
               + "<div class='b-title'>"+escapeHTML(titles)+"</div>"
-              + "<div class='b-sub'>"+fmtMin(s0.start)+"–"+fmtMin(s0.end)+"</div>"
+              + "<div class='b-sub'>"+time+"</div>"
               + "</button>";
       }
     });
-    html += "</div>";
+    html += "</div></div>";
   });
-  html += "</div></div></div>";
+  html += "</div></div>";
   roomResult.innerHTML = html;
   roomResult.querySelectorAll(".block").forEach(function(b){
     b.addEventListener("click", function(){
@@ -667,7 +690,22 @@ function isNegativeRoom(place){
   return /-$/.test(trimmed);
 }
 
+function placeItemHTML(p){
+  return "<button type='button' class='place-item' data-place='"+escapeHTML(p)+"'><span class='name'>"+escapeHTML(p)+"</span><span class='dot'></span></button>";
+}
+// کلیک روی یه کلاس خالی → رفتن به تب «وضعیت کلاس» با برنامه‌ی همون کلاس
+document.getElementById("freeResultWrap").addEventListener("click", function(e){
+  var btn = e.target.closest(".place-item"); if(!btn) return;
+  var place = btn.dataset.place;
+  roomInput.value = place;
+  roomSuggest.classList.remove("show");
+  selectRoom(place);
+  activateTab("room");
+  window.scrollTo(0,0);
+});
+
 function showFreeRooms(){
+
   var s = Number(freeStart.value), e = Number(freeEnd.value);
   var wrap = document.getElementById("freeResultWrap");
   if(e <= s){ wrap.innerHTML = "<div class='empty-state'>ساعت پایان باید بعد از ساعت شروع باشه.</div>"; return; }
@@ -700,14 +738,14 @@ function showFreeRooms(){
   order.forEach(function(key){
     var title = key==="other" ? "سایر مکان‌ها" : "کلاس‌های "+key+" تا "+(Number(key)+99);
     html += "<div class='place-group'><div class='place-group-title'>"+title+"</div><div class='place-list'>";
-    buckets[key].forEach(function(p){ html += "<div class='place-item'><span class='name'>"+escapeHTML(p)+"</span><span class='dot'></span></div>"; });
+    buckets[key].forEach(function(p){ html += placeItemHTML(p); });
     html += "</div></div>";
   });
   if(negativeList.length){
     html += "<div class='place-group'>"
       + "<button type='button' class='place-group-title neg-toggle' id='negToggle'>کلاس‌های منفی ("+negativeList.length+")<span class='neg-chevron'>▾</span></button>"
       + "<div class='place-list' id='negList' style='display:none;'>";
-    negativeList.forEach(function(p){ html += "<div class='place-item'><span class='name'>"+escapeHTML(p)+"</span><span class='dot'></span></div>"; });
+    negativeList.forEach(function(p){ html += placeItemHTML(p); });
     html += "</div></div>";
   }
   wrap.innerHTML = html;
