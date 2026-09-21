@@ -130,13 +130,52 @@ main{ flex:1; padding:2px 14px 18px; }
   border:1px solid var(--border); border-radius:var(--radius-sm); overflow:hidden; z-index:5;
   box-shadow:0 8px 24px var(--shadow); max-height:220px; overflow-y:auto; display:none;
 }
-.suggest-list.show{ display:block; }
+.suggest-list.show{
+  display:block;
+  transform-origin:50% 0; /* از لبهٔ بالا (همون‌جایی که به اینپوت چسبیده) باز می‌شه */
+  animation:originPop .26s cubic-bezier(.2,.9,.25,1.15) backwards;
+}
+/* افکت Origin-aware pop-in: لیست از محل اینپوت (مبدأ خودش) کوچیک شروع می‌شه و باز می‌شه */
+@keyframes originPop{
+  0%  { opacity:0; transform:scale(.88,.6) translateY(-6px); }
+  100%{ opacity:1; transform:scale(1) translateY(0); }
+}
+@media (prefers-reduced-motion: reduce){
+  .suggest-list.show{ animation:none; }
+}
 .suggest-list button{
   display:block; width:100%; text-align:right; padding:10px 14px; border:0; background:none;
   border-bottom:1px solid var(--border); cursor:pointer; color:var(--text);
 }
 .suggest-list button:last-child{ border-bottom:0; }
 .suggest-list button:active{ background:var(--surface-2); }
+
+/* Staggered Card Rise: آیتم‌های لیست پیشنهاد یکی‌یکی از پایین بالا میان */
+@keyframes suggestRise{
+  0%  { opacity:0; transform:translateY(16px) scale(.97); }
+  100%{ opacity:1; transform:translateY(0) scale(1); }
+}
+/* Rubber Band: کشیده/فشرده شدن پی‌درپی با انتخاب آیتم */
+@keyframes rubberBand{
+  0%  { transform:scale(1,1); }
+  30% { transform:scale(1.1,.88); }
+  50% { transform:scale(.93,1.1); }
+  70% { transform:scale(1.04,.97); }
+  100%{ transform:scale(1,1); }
+}
+.suggest-list button{
+  transform-origin:50% 50%;
+  transition:transform .55s cubic-bezier(.34,2.1,.45,.9), background .15s ease;
+  animation:suggestRise .38s cubic-bezier(.2,.85,.25,1) backwards;
+  animation-delay:calc(var(--i,0) * 38ms);
+}
+.suggest-list button:active{ transform:scale(.96,1.08); transition-duration:.12s; transition-timing-function:ease-out; }
+.suggest-list button.rb-pop{ animation:rubberBand .5s ease-out; animation-delay:0s; }
+@media (prefers-reduced-motion: reduce){
+  .suggest-list button{ animation:none; transition:none; }
+  .suggest-list button:active{ transform:none; }
+  .suggest-list button.rb-pop{ animation:none; }
+}
 
 .legend{ display:flex; gap:16px; margin:16px 2px 4px; font-size:12.5px; color:var(--text-muted); }
 .legend span{ display:inline-flex; align-items:center; gap:6px; }
@@ -189,23 +228,41 @@ main{ flex:1; padding:2px 14px 18px; }
 /* ---------- free view ---------- */
 .day-chips{ display:grid; grid-template-columns:repeat(4,1fr); gap:6px; padding:2px; margin:8px 0 2px; }
 .day-chip{
+  position:relative; isolation:isolate;
   padding:9px 4px; border-radius:10px; border:1px solid var(--border); text-align:center;
   background:var(--surface); cursor:pointer; font-size:12.5px;
+  transition:color .3s ease, border-color .3s ease;
 }
-.day-chip.sel{ background:var(--free); border-color:var(--free); color:#fff; font-weight:700; }
+/* افکت Cross Fade: لایه‌ی رنگیِ حالت انتخاب‌شده روی دکمه محو/ظاهر می‌شه (به‌جای پرش ناگهانی رنگ) */
+.day-chip::before, .now-btn::before, .go-btn::before{
+  content:""; position:absolute; inset:0; border-radius:inherit; z-index:-1;
+  opacity:0; transition:opacity .3s ease; pointer-events:none;
+}
+.day-chip::before{ background:var(--free); }
+.day-chip.sel{ border-color:var(--free); color:#fff; font-weight:700; }
+.day-chip.sel::before{ opacity:1; }
 .time-row{ display:flex; gap:10px; align-items:center; }
 .time-row .select-input{ flex:1; }
 .time-row span{ color:var(--text-muted); font-size:13px; }
 .now-btn{
+  position:relative; isolation:isolate;
   width:100%; margin-top:10px; padding:11px; border-radius:var(--radius); cursor:pointer;
   background:var(--free-soft); color:var(--free); border:1px solid var(--free); font-weight:700; font-size:13.5px;
+  transition:color .3s ease;
 }
-.now-btn:active{ opacity:.8; }
+.now-btn::before{ background:var(--free); }
+.now-btn:active{ color:#fff; }
+.now-btn:active::before{ opacity:1; transition-duration:.12s; }
 .go-btn{
+  position:relative; isolation:isolate;
   width:100%; margin-top:10px; padding:13px; border:0; border-radius:var(--radius);
   background:var(--free); color:#fff; font-weight:700; font-size:15px; cursor:pointer;
 }
-.go-btn:active{ opacity:.85; }
+.go-btn::before{ background:color-mix(in srgb, var(--free) 72%, #000); }
+.go-btn:active::before{ opacity:1; transition-duration:.12s; }
+@media (prefers-reduced-motion: reduce){
+  .day-chip, .day-chip::before, .now-btn, .now-btn::before, .go-btn::before{ transition:none; }
+}
 .place-group{ margin-top:16px; }
 .place-group-title{ font-size:12.5px; font-weight:700; color:var(--text-muted); margin:0 2px 8px; }
 button.place-group-title{ border:0; background:none; width:100%; padding:0; font-family:inherit; cursor:pointer; display:flex; align-items:center; justify-content:space-between; }
@@ -720,14 +777,16 @@ roomInput.addEventListener("input", function(){
   if(!q){ roomSuggest.classList.remove("show"); return; }
   var list = ALL_PLACES.filter(function(p){ return normalizeSearch(p).indexOf(q) > -1; }).slice(0,25);
   if(list.length===0){ roomSuggest.classList.remove("show"); return; }
-  roomSuggest.innerHTML = list.map(function(p){ return "<button data-place='"+escapeHTML(p)+"'>"+escapeHTML(p)+"</button>"; }).join("");
+  roomSuggest.innerHTML = list.map(function(p, i){ return "<button data-place='"+escapeHTML(p)+"' style='--i:"+Math.min(i,8)+"'>"+escapeHTML(p)+"</button>"; }).join("");
   roomSuggest.classList.add("show");
 });
 roomSuggest.addEventListener("click", function(e){
   var btn = e.target.closest("button"); if(!btn) return;
   roomInput.value = btn.dataset.place;
-  roomSuggest.classList.remove("show");
   selectRoom(btn.dataset.place);
+  // اول افکت Rubber Band روی آیتم انتخاب‌شده پخش می‌شه، بعد لیست بسته می‌شه
+  btn.classList.add("rb-pop");
+  setTimeout(function(){ roomSuggest.classList.remove("show"); }, 380);
 });
 document.addEventListener("click", function(e){
   if(!roomInput.contains(e.target) && !roomSuggest.contains(e.target)) roomSuggest.classList.remove("show");
