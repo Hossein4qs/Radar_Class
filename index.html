@@ -134,23 +134,34 @@ main{ flex:1; padding:2px 14px 18px; }
 }
 .block .b-title{ font-size:10.5px; font-weight:700; color:var(--busy); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .block .b-sub{ font-size:9.5px; color:var(--busy); opacity:.8; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.block .b-count{
+  position:absolute; top:2px; left:2px; background:var(--busy); color:#fff; font-size:9px; font-weight:700;
+  min-width:14px; height:14px; border-radius:99px; display:flex; align-items:center; justify-content:center; padding:0 2px;
+}
 
 /* ---------- free view ---------- */
-.day-chips{ display:flex; gap:6px; overflow-x:auto; padding:2px; margin:8px 0 2px; }
+.day-chips{ display:grid; grid-template-columns:repeat(4,1fr); gap:6px; padding:2px; margin:8px 0 2px; }
 .day-chip{
-  flex:none; padding:9px 14px; border-radius:99px; border:1px solid var(--border);
-  background:var(--surface); cursor:pointer; font-size:13.5px; white-space:nowrap;
+  padding:9px 4px; border-radius:10px; border:1px solid var(--border); text-align:center;
+  background:var(--surface); cursor:pointer; font-size:12.5px;
 }
 .day-chip.sel{ background:var(--free); border-color:var(--free); color:#fff; font-weight:700; }
 .time-row{ display:flex; gap:10px; align-items:center; }
 .time-row .select-input{ flex:1; }
 .time-row span{ color:var(--text-muted); font-size:13px; }
+.now-btn{
+  width:100%; margin-top:10px; padding:11px; border-radius:var(--radius); cursor:pointer;
+  background:var(--free-soft); color:var(--free); border:1px solid var(--free); font-weight:700; font-size:13.5px;
+}
+.now-btn:active{ opacity:.8; }
 .go-btn{
-  width:100%; margin-top:16px; padding:13px; border:0; border-radius:var(--radius);
+  width:100%; margin-top:10px; padding:13px; border:0; border-radius:var(--radius);
   background:var(--free); color:#fff; font-weight:700; font-size:15px; cursor:pointer;
 }
 .go-btn:active{ opacity:.85; }
-.place-list{ display:flex; flex-direction:column; gap:8px; margin-top:16px; }
+.place-group{ margin-top:16px; }
+.place-group-title{ font-size:12.5px; font-weight:700; color:var(--text-muted); margin:0 2px 8px; }
+.place-list{ display:flex; flex-direction:column; gap:8px; }
 .place-item{
   display:flex; align-items:center; justify-content:space-between; background:var(--surface);
   border:1px solid var(--border); border-radius:var(--radius-sm); padding:11px 14px;
@@ -239,6 +250,7 @@ main{ flex:1; padding:2px 14px 18px; }
         <span>تا</span>
         <select class="select-input" id="freeEnd"></select>
       </div>
+      <button class="now-btn" id="freeNowBtn">🕐 همین الان</button>
       <button class="go-btn" id="freeGoBtn">نمایش کلاس‌های خالی</button>
       <div id="freeResultWrap"></div>
     </section>
@@ -416,6 +428,31 @@ function courseDetailHTML(course){
 function infoBox(k,v){ return "<div class='info-box'><div class='k'>"+k+"</div><div class='v'>"+escapeHTML(String(v))+"</div></div>"; }
 function escapeHTML(s){ return String(s).replace(/[&<>"']/g, function(c){ return {"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]; }); }
 
+// چند درس که سر یه ساعت و یه کلاس هستن (معمولاً چون برای رشته‌های مختلف
+// با ظرفیت/نام جدا توی دیتابیس ثبت شدن) رو با هم توی یه لیست نشون می‌ده
+function openMergedSheet(idxs){
+  var html = "<h2>چند درس هم‌زمان در این کلاس</h2>";
+  html += "<div class='sub'>احتمالاً همون یه کلاسه که برای رشته‌های مختلف جدا ثبت شده — روی هرکدوم بزن برای جزئیات.</div>";
+  html += "<div class='card-list'>";
+  idxs.forEach(function(i){
+    var c = COURSES[i];
+    var cap = c["ظرفیت"], reg = c["ثبت نام شده"];
+    var full = cap!=null && reg!=null && reg>=cap;
+    html += "<button class='course-card' data-idx='"+i+"'>"
+      + "<div class='title'>"+escapeHTML(c["نام درس"]||"")+"</div>"
+      + "<div class='meta'>"+escapeHTML(c["نام استاد"]||"")+" · "+escapeHTML(c["گروه آموزشي"]||"")+"</div>"
+      + "<div class='row2'><span class='time'></span><span class='badge "+(full?"busy":"free")+"'>"+(full?"تکمیل":((cap!=null&&reg!=null)?(cap-reg)+" جا خالی":""))+"</span></div>"
+    + "</button>";
+  });
+  html += "</div>";
+  openSheet(html);
+}
+// کلیک روی کارت‌های داخل خودِ بات‌شیت (مثلاً از لیست ادغام‌شده) هم جزئیات کامل رو باز کنه
+sheetContent.addEventListener("click", function(e){
+  var btn = e.target.closest(".course-card"); if(!btn) return;
+  openSheet(courseDetailHTML(COURSES[Number(btn.dataset.idx)]));
+});
+
 /* ================= تب جستجو ================= */
 var searchInput = document.getElementById("searchInput"), searchResults = document.getElementById("searchResults"), searchCount = document.getElementById("searchCount");
 var searchTimer = null;
@@ -513,35 +550,62 @@ function selectRoom(place){
   html += "</div>";
   daysPresent.forEach(function(d){
     html += "<div class='day-col' style='--hrs:"+hrs+";'>";
-    sessions.filter(function(s){return s.day===d;}).forEach(function(s){
-      var c = COURSES[s.courseIdx];
-      var top = (s.start-minStart)*pxPerMin, h2 = Math.max(20,(s.end-s.start)*pxPerMin);
-      html += "<button class='block' style='top:"+top+"px; height:"+h2+"px;' data-idx='"+s.courseIdx+"'>"
-            + "<div class='b-title'>"+escapeHTML(c["نام درس"]||"")+"</div>"
-            + "<div class='b-sub'>"+fmtMin(s.start)+"–"+fmtMin(s.end)+"</div>"
-            + "</button>";
+    // جلسه‌هایی که دقیقاً هم‌روز و هم‌ساعت‌ان رو یکی می‌کنیم (اغلب یه کلاس که چون
+    // ظرفیت/نامش برای چند رشته فرق داره، چندبار توی دیتابیس ثبت شده)
+    var daySessions = sessions.filter(function(s){return s.day===d;});
+    var groups = {};
+    var order = [];
+    daySessions.forEach(function(s){
+      var key = s.start+"-"+s.end;
+      if(!groups[key]){ groups[key] = []; order.push(key); }
+      groups[key].push(s);
+    });
+    order.forEach(function(key){
+      var group = groups[key];
+      var s0 = group[0];
+      var top = (s0.start-minStart)*pxPerMin, h2 = Math.max(20,(s0.end-s0.start)*pxPerMin);
+      var idxs = group.map(function(s){return s.courseIdx;}).join(",");
+      if(group.length === 1){
+        var c = COURSES[s0.courseIdx];
+        html += "<button class='block' style='top:"+top+"px; height:"+h2+"px;' data-idxs='"+idxs+"'>"
+              + "<div class='b-title'>"+escapeHTML(c["نام درس"]||"")+"</div>"
+              + "<div class='b-sub'>"+fmtMin(s0.start)+"–"+fmtMin(s0.end)+"</div>"
+              + "</button>";
+      } else {
+        var titles = group.map(function(s){ return COURSES[s.courseIdx]["نام درس"]||""; }).join(" / ");
+        html += "<button class='block' style='top:"+top+"px; height:"+h2+"px;' data-idxs='"+idxs+"'>"
+              + "<span class='b-count'>"+group.length+"</span>"
+              + "<div class='b-title'>"+escapeHTML(titles)+"</div>"
+              + "<div class='b-sub'>"+fmtMin(s0.start)+"–"+fmtMin(s0.end)+"</div>"
+              + "</button>";
+      }
     });
     html += "</div>";
   });
   html += "</div></div></div>";
   roomResult.innerHTML = html;
   roomResult.querySelectorAll(".block").forEach(function(b){
-    b.addEventListener("click", function(){ openSheet(courseDetailHTML(COURSES[Number(b.dataset.idx)])); });
+    b.addEventListener("click", function(){
+      var idxs = b.dataset.idxs.split(",").map(Number);
+      if(idxs.length === 1) openSheet(courseDetailHTML(COURSES[idxs[0]]));
+      else openMergedSheet(idxs);
+    });
   });
 }
 
 /* ================= تب کلاس خالی ================= */
 var freeDayChips = document.getElementById("freeDayChips");
 var selectedFreeDay = DAY_KEYS[0];
+function setFreeDay(d){
+  selectedFreeDay = d;
+  freeDayChips.querySelectorAll(".day-chip").forEach(function(c){ c.classList.toggle("sel", c.dataset.day===d); });
+}
 DAY_KEYS.slice(0,7).forEach(function(d){
   var b = document.createElement("button");
   b.className = "day-chip" + (d===selectedFreeDay ? " sel":"");
   b.textContent = DAY_LABEL[d];
   b.dataset.day = d;
-  b.addEventListener("click", function(){
-    selectedFreeDay = d;
-    freeDayChips.querySelectorAll(".day-chip").forEach(function(c){c.classList.toggle("sel", c.dataset.day===d);});
-  });
+  b.addEventListener("click", function(){ setFreeDay(d); });
   freeDayChips.appendChild(b);
 });
 
@@ -553,7 +617,14 @@ TIME_MARKS.forEach(function(m){
 freeStart.selectedIndex = 0;
 freeEnd.selectedIndex = Math.min(TIME_MARKS.length-1, 1);
 
-document.getElementById("freeGoBtn").addEventListener("click", function(){
+// عدد صدگانِ شماره‌ی کلاس رو برمی‌گردونه (مثلاً 609 -> 600) تا بشه بر اساس طبقه گروه‌بندی کرد
+function hundredBucket(place){
+  var m = place.match(/\d+/);
+  if(!m) return null;
+  return Math.floor(parseInt(m[0],10)/100)*100;
+}
+
+function showFreeRooms(){
   var s = Number(freeStart.value), e = Number(freeEnd.value);
   var wrap = document.getElementById("freeResultWrap");
   if(e <= s){ wrap.innerHTML = "<div class='empty-state'>ساعت پایان باید بعد از ساعت شروع باشه.</div>"; return; }
@@ -567,10 +638,49 @@ document.getElementById("freeGoBtn").addEventListener("click", function(){
     wrap.innerHTML = "<div class='empty-state'>توی این بازه هیچ کلاسی خالی نیست.</div>";
     return;
   }
-  var html = "<div class='result-count'>"+free.length+" کلاس خالی از "+ALL_PLACES.length+" مورد</div><div class='place-list'>";
-  free.forEach(function(p){ html += "<div class='place-item'><span class='name'>"+escapeHTML(p)+"</span><span class='dot'></span></div>"; });
-  html += "</div>";
+  var buckets = {}, order = [];
+  free.forEach(function(p){
+    var b = hundredBucket(p);
+    var key = b===null ? "other" : String(b);
+    if(!buckets[key]){ buckets[key]=[]; order.push(key); }
+    buckets[key].push(p);
+  });
+  order.sort(function(a,b){
+    if(a==="other") return 1; if(b==="other") return -1;
+    return Number(a)-Number(b);
+  });
+  var html = "<div class='result-count'>"+free.length+" کلاس خالی از "+ALL_PLACES.length+" مورد</div>";
+  order.forEach(function(key){
+    var title = key==="other" ? "سایر مکان‌ها" : "کلاس‌های "+key+" تا "+(Number(key)+99);
+    html += "<div class='place-group'><div class='place-group-title'>"+title+"</div><div class='place-list'>";
+    buckets[key].forEach(function(p){ html += "<div class='place-item'><span class='name'>"+escapeHTML(p)+"</span><span class='dot'></span></div>"; });
+    html += "</div></div>";
+  });
   wrap.innerHTML = html;
+}
+document.getElementById("freeGoBtn").addEventListener("click", showFreeRooms);
+
+// دکمه‌ی «همین الان»: روز و بازه‌ی زمانیِ جاری رو خودکار انتخاب می‌کنه و نتیجه رو نشون می‌ده
+document.getElementById("freeNowBtn").addEventListener("click", function(){
+  var now = new Date();
+  var ourDay = DAY_KEYS[(now.getDay()+1)%7];
+  setFreeDay(ourDay);
+  var nowMin = now.getHours()*60 + now.getMinutes();
+  var idx = TIME_MARKS.findIndex(function(m){ return m > nowMin; });
+  var startMark, endMark;
+  if(idx === -1){
+    startMark = TIME_MARKS.length>1 ? TIME_MARKS[TIME_MARKS.length-2] : TIME_MARKS[0];
+    endMark = TIME_MARKS[TIME_MARKS.length-1];
+  } else if(idx === 0){
+    startMark = TIME_MARKS[0];
+    endMark = TIME_MARKS.length>1 ? TIME_MARKS[1] : TIME_MARKS[0];
+  } else {
+    startMark = TIME_MARKS[idx-1];
+    endMark = TIME_MARKS[idx];
+  }
+  freeStart.value = String(startMark);
+  freeEnd.value = String(endMark);
+  showFreeRooms();
 });
 
 /* ================= سرویس‌ورکر ================= */
