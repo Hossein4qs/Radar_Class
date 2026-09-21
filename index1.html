@@ -1,0 +1,1026 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#12181a">
+<meta name="description" content="جستجوی دروس دانشگاه، بررسی وضعیت کلاس‌ها و پیدا کردن کلاس خالی">
+<title>رادار علموف</title>
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<link rel="icon" href="icons/icon-192.png">
+<style>
+:root{
+  --bg:#eef2f0; --surface:#ffffff; --surface-2:#f5f7f6; --border:#dce3e0;
+  --text:#16211f; --text-muted:#5c6e6a;
+  --free:#1f7a6c; --free-soft:#dcefea;
+  --busy:#b4533b; --busy-soft:#f4e3dd;
+  --shadow:rgba(20,30,28,.10);
+  --radius:14px; --radius-sm:9px;
+  --safe-t:env(safe-area-inset-top,0px); --safe-b:env(safe-area-inset-bottom,0px);
+  --ease-out:cubic-bezier(.22,1,.36,1);
+  --ease-spring:cubic-bezier(.34,1.42,.5,1);
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#12181a; --surface:#1b2325; --surface-2:#202a2c; --border:#2b3739;
+    --text:#e8ecea; --text-muted:#93a5a1;
+    --free:#4fbfae; --free-soft:rgba(79,191,174,.16);
+    --busy:#e1876b; --busy-soft:rgba(225,135,107,.18);
+    --shadow:rgba(0,0,0,.4);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#12181a; --surface:#1b2325; --surface-2:#202a2c; --border:#2b3739;
+  --text:#e8ecea; --text-muted:#93a5a1;
+  --free:#4fbfae; --free-soft:rgba(79,191,174,.16);
+  --busy:#e1876b; --busy-soft:rgba(225,135,107,.18);
+  --shadow:rgba(0,0,0,.4);
+  color-scheme: dark;
+}
+*{box-sizing:border-box;}
+html,body{height:100%;}
+body{
+  margin:0; background:var(--bg); color:var(--text);
+  font-family:'Vazirmatn','IRANYekanWebFaNum',Tahoma,'Segoe UI',system-ui,sans-serif;
+  font-size:15px; line-height:1.7; -webkit-tap-highlight-color:transparent;
+  padding-top:var(--safe-t);
+}
+button,input,select{ font-family:inherit; font-size:inherit; color:inherit; }
+.app{ max-width:560px; margin:0 auto; min-height:100%; display:flex; flex-direction:column; }
+
+/* ---------- top bar ---------- */
+.topbar{
+  display:flex; align-items:center; justify-content:space-between;
+  padding:14px 18px 10px;
+}
+.topbar h1{ font-size:19px; font-weight:700; margin:0; letter-spacing:-.2px; }
+.theme-btn{
+  width:38px; height:38px; border-radius:50%; border:1px solid var(--border);
+  background:var(--surface); display:flex; align-items:center; justify-content:center;
+  cursor:pointer; transition:transform .3s var(--ease-spring), background .18s ease;
+}
+.theme-btn:active{ transform:scale(.9) rotate(-18deg); }
+.theme-btn svg{ width:18px; height:18px; stroke:var(--text-muted); }
+
+/* ---------- views ---------- */
+main{ flex:1; padding:2px 14px 18px; }
+.view{ display:none; }
+.view.active{ display:block; animation:viewIn .3s var(--ease-out) both; }
+@keyframes viewIn{
+  from{ opacity:0; transform:translateX(calc(var(--dir,1) * 16px)) scale(.994); }
+  to{ opacity:1; transform:none; }
+}
+
+.field-label{ font-size:13px; font-weight:600; color:var(--text-muted); margin:14px 2px 8px; }
+.search-input, .select-input{
+  width:100%; padding:13px 14px; border-radius:var(--radius); border:1px solid var(--border);
+  background:var(--surface); color:var(--text); outline:none;
+  transition:border-color .18s ease, box-shadow .18s ease;
+}
+.search-input:focus, .select-input:focus{ border-color:var(--free); box-shadow:0 0 0 3px var(--free-soft); }
+.hint{ font-size:12.5px; color:var(--text-muted); margin:8px 2px 0; }
+
+/* ---------- result cards ---------- */
+.result-count{ font-size:12.5px; color:var(--text-muted); margin:14px 2px 8px; }
+.card-list{ display:flex; flex-direction:column; gap:9px; }
+.course-card{
+  text-align:right; width:100%; background:var(--surface); border:1px solid var(--border);
+  border-radius:var(--radius); padding:12px 14px; cursor:pointer;
+  transition:transform .2s var(--ease-spring), border-color .18s ease, background .18s ease;
+}
+.course-card:active{ transform:scale(.972); border-color:var(--free); }
+.course-card .title{ font-weight:700; font-size:15px; }
+.course-card .meta{ color:var(--text-muted); font-size:13px; margin-top:3px; }
+.course-card .row2{ display:flex; align-items:center; justify-content:space-between; margin-top:8px; gap:8px;}
+.course-card .time{ font-size:12.5px; color:var(--text-muted); }
+.badge{ font-size:11.5px; font-weight:600; padding:3px 9px; border-radius:99px; white-space:nowrap; }
+.badge.free{ background:var(--free-soft); color:var(--free); }
+.badge.busy{ background:var(--busy-soft); color:var(--busy); }
+
+.empty-state{
+  text-align:center; color:var(--text-muted); padding:40px 20px; font-size:13.5px;
+  animation:viewIn .3s var(--ease-out) both;
+}
+
+/* ---------- room view ---------- */
+.suggest-box{ position:relative; }
+.suggest-list{
+  position:absolute; inset-inline:0; top:calc(100% + 4px); background:var(--surface);
+  border:1px solid var(--border); border-radius:var(--radius-sm); overflow:hidden; z-index:5;
+  box-shadow:0 8px 24px var(--shadow); max-height:220px; overflow-y:auto; display:none;
+}
+.suggest-list.show{ display:block; animation:popIn .18s var(--ease-out) both; }
+@keyframes popIn{ from{ opacity:0; transform:translateY(-6px) scale(.985);} to{ opacity:1; transform:none; } }
+.suggest-list button{
+  display:block; width:100%; text-align:right; padding:10px 14px; border:0; background:none;
+  border-bottom:1px solid var(--border); cursor:pointer; color:var(--text);
+  transition:background .15s ease;
+}
+.suggest-list button:last-child{ border-bottom:0; }
+.suggest-list button:active{ background:var(--surface-2); }
+
+.legend{ display:flex; gap:16px; margin:16px 2px 4px; font-size:12.5px; color:var(--text-muted); }
+.legend span{ display:inline-flex; align-items:center; gap:6px; }
+.legend i{ width:11px; height:11px; border-radius:3px; display:inline-block; }
+.legend i.free{ background:var(--free); }
+.legend i.busy{ background:var(--busy); }
+
+.room-title{ font-size:16px; font-weight:700; margin:16px 2px 2px; animation:viewIn .3s var(--ease-out) both; }
+.room-sub{ font-size:12.5px; color:var(--text-muted); margin:0 2px 10px; animation:viewIn .3s var(--ease-out) .03s both; }
+
+.grid-wrap{ overflow-x:auto; border:1px solid var(--border); border-radius:var(--radius); background:var(--surface); }
+.sched{ display:flex; flex-direction:column; min-width:100%; width:max-content; }
+.sched-row{ display:flex; border-bottom:1px solid var(--border); }
+.sched-row:last-child{ border-bottom:0; }
+.day-lbl{
+  flex:none; width:64px; display:flex; align-items:center; justify-content:center;
+  font-size:12px; font-weight:700; color:var(--text-muted); background:var(--surface);
+  border-inline-end:1px solid var(--border);
+  position:sticky; right:0; z-index:3;
+}
+.sched-head .day-lbl, .sched-head .track{ background:var(--surface-2); }
+.track{ position:relative; flex:1; min-width:var(--track-w); }
+.sched-head .track{ height:30px; }
+.sched-head .day-lbl{ height:30px; }
+.hour-lbl{
+  position:absolute; top:0; bottom:0; display:flex; align-items:center;
+  padding-inline-start:5px; font-size:10.5px; color:var(--text-muted); white-space:nowrap;
+}
+.sched-row .track{
+  height:62px;
+  background-image:linear-gradient(to left, var(--border) 1px, transparent 1px);
+  background-size:calc(100%/var(--hrs)) 100%; background-repeat:repeat-x; background-position:100% 0;
+}
+.sched-row .day-lbl{ height:62px; }
+.block{
+  position:absolute; top:5px; bottom:5px; border-radius:7px; padding:4px 6px; overflow:hidden;
+  background:var(--busy-soft); border:1px solid var(--busy); cursor:pointer; text-align:right;
+  display:flex; flex-direction:column; justify-content:center; gap:1px;
+  transition:transform .2s var(--ease-spring), box-shadow .2s ease;
+  transform-origin:center;
+}
+.block:active{ transform:scale(.94); box-shadow:0 0 0 3px var(--busy-soft); }
+.block .b-title{
+  font-size:10.5px; font-weight:700; line-height:1.45; color:var(--busy);
+  display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;
+}
+.block .b-sub{ font-size:9.5px; color:var(--busy); opacity:.8; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.block .b-count{
+  position:absolute; top:2px; left:2px; background:var(--busy); color:#fff; font-size:9px; font-weight:700;
+  min-width:14px; height:14px; border-radius:99px; display:flex; align-items:center; justify-content:center; padding:0 2px;
+}
+
+/* ---------- free view ---------- */
+.day-chips{ display:grid; grid-template-columns:repeat(4,1fr); gap:6px; padding:2px; margin:8px 0 2px; }
+.day-chip{
+  padding:9px 4px; border-radius:10px; border:1px solid var(--border); text-align:center;
+  background:var(--surface); cursor:pointer; font-size:12.5px;
+  transition:transform .22s var(--ease-spring), background .2s ease, border-color .2s ease, color .2s ease;
+}
+.day-chip:active{ transform:scale(.93); }
+.day-chip.sel{ background:var(--free); border-color:var(--free); color:#fff; font-weight:700; transform:scale(1.02); }
+.time-row{ display:flex; gap:10px; align-items:center; }
+.time-row .select-input{ flex:1; }
+.time-row span{ color:var(--text-muted); font-size:13px; }
+.now-btn{
+  width:100%; margin-top:10px; padding:11px; border-radius:var(--radius); cursor:pointer;
+  background:var(--free-soft); color:var(--free); border:1px solid var(--free); font-weight:700; font-size:13.5px;
+  transition:transform .22s var(--ease-spring), opacity .2s ease;
+}
+.now-btn:active{ opacity:.8; transform:scale(.97); }
+.go-btn{
+  width:100%; margin-top:10px; padding:13px; border:0; border-radius:var(--radius);
+  background:var(--free); color:#fff; font-weight:700; font-size:15px; cursor:pointer;
+  transition:transform .22s var(--ease-spring), opacity .2s ease, box-shadow .2s ease;
+}
+.go-btn:active{ opacity:.85; transform:scale(.97); box-shadow:0 6px 18px var(--free-soft); }
+.place-group{ margin-top:16px; }
+.place-group-title{ font-size:12.5px; font-weight:700; color:var(--text-muted); margin:0 2px 8px; }
+button.place-group-title{ border:0; background:none; width:100%; padding:0; font-family:inherit; cursor:pointer; display:flex; align-items:center; justify-content:space-between; }
+.neg-chevron{ font-size:11px; }
+.place-list{ display:flex; flex-direction:column; gap:8px; }
+.place-item{
+  display:flex; align-items:center; justify-content:space-between; background:var(--surface);
+  border:1px solid var(--border); border-radius:var(--radius-sm); padding:11px 14px;
+  width:100%; text-align:right; cursor:pointer;
+  transition:transform .2s var(--ease-spring), background .18s ease, border-color .18s ease;
+}
+.place-item:active{ background:var(--surface-2); transform:scale(.975); border-color:var(--free); }
+.place-item .name{ font-weight:600; font-size:14px; }
+.place-item .dot{ width:9px; height:9px; border-radius:50%; background:var(--free); flex:none; }
+
+/* ---------- bottom sheet ---------- */
+.sheet-backdrop{
+  position:fixed; inset:0; background:rgba(10,14,13,.5); z-index:20; opacity:0; pointer-events:none;
+  transition:opacity .2s ease;
+}
+.sheet-backdrop.show{ opacity:1; pointer-events:auto; }
+.sheet{
+  position:fixed; right:0; left:0; bottom:0; z-index:21; background:var(--surface);
+  border-radius:18px 18px 0 0; max-height:82vh; overflow-y:auto; transform:translateY(100%);
+  transition:transform .26s var(--ease-out); padding:16px 18px calc(20px + var(--safe-b));
+  box-shadow:0 -8px 30px var(--shadow);
+}
+.sheet.show{ transform:translateY(0); }
+.sheet-handle{ width:36px; height:4px; border-radius:99px; background:var(--border); margin:0 auto 14px; }
+.sheet h2{ font-size:17px; margin:0 0 4px; }
+.sheet .sub{ color:var(--text-muted); font-size:13px; margin-bottom:14px; }
+.sheet .info-grid{ display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:14px; }
+.info-box{ background:var(--surface-2); border-radius:var(--radius-sm); padding:9px 11px; }
+.info-box .k{ font-size:11.5px; color:var(--text-muted); }
+.info-box .v{ font-size:14px; font-weight:700; margin-top:2px; }
+.sheet .block-title{ font-size:13px; font-weight:700; margin:14px 0 6px; color:var(--text-muted); }
+.sheet pre{ white-space:pre-wrap; font-family:inherit; font-size:13.5px; background:var(--surface-2); border-radius:var(--radius-sm); padding:10px 12px; margin:0; line-height:1.8; }
+.sheet-close{ position:absolute; left:16px; top:16px; width:32px; height:32px; border-radius:50%; border:1px solid var(--border); background:var(--surface-2); display:flex; align-items:center; justify-content:center; cursor:pointer; transition:transform .25s var(--ease-spring); }
+.sheet-close:active{ transform:scale(.86) rotate(90deg); }
+.carousel-nav{ display:flex; align-items:center; justify-content:space-between; margin:0 0 14px; padding-inline-end:40px; }
+.car-btn{
+  width:34px; height:34px; border-radius:50%; border:1px solid var(--border); background:var(--surface-2);
+  font-size:18px; line-height:1; cursor:pointer; display:flex; align-items:center; justify-content:center; flex:none;
+  transition:transform .25s var(--ease-spring), opacity .2s ease;
+}
+.car-btn:active{ transform:scale(.88); }
+.car-btn:disabled{ opacity:.3; cursor:default; }
+.car-count{ font-size:12.5px; color:var(--text-muted); font-weight:600; }
+.car-slide{ animation:carIn .22s var(--ease-out); }
+@keyframes carIn{ from{ opacity:0; transform:translateX(10px) scale(.99);} to{ opacity:1; transform:none;} }
+
+/* ---------- tab bar ---------- */
+.tabbar{
+  position:sticky; bottom:0; display:flex; border-top:1px solid var(--border);
+  background:var(--surface); padding-bottom:var(--safe-b);
+}
+.tab-indicator{
+  position:absolute; top:-1px; right:0; height:3px; width:0; border-radius:0 0 4px 4px;
+  background:var(--free); z-index:2; pointer-events:none;
+  transition:transform .38s var(--ease-spring), width .38s var(--ease-spring);
+  will-change:transform,width;
+}
+.tab{
+  flex:1; display:flex; flex-direction:column; align-items:center; gap:3px; padding:9px 4px 8px;
+  border:0; background:none; color:var(--text-muted); cursor:pointer;
+  transition:color .25s ease;
+}
+.tab svg{ width:21px; height:21px; stroke:currentColor; fill:none; stroke-width:1.7; transition:transform .38s var(--ease-spring); }
+.tab span{ font-size:11px; font-weight:600; transition:transform .38s var(--ease-spring); }
+.tab.sel{ color:var(--free); }
+.tab.sel svg{ transform:translateY(-1.5px) scale(1.14); }
+.tab.sel span{ transform:translateY(-.5px); }
+.tab:active svg{ transform:scale(.86); }
+
+/* ---------- entrance animations (Rubber Band + Stagger) ---------- */
+@keyframes rubberIn{
+  0%   { opacity:0; transform:translateY(18px) scale(.93,.86); }
+  55%  { opacity:1; transform:translateY(-3px) scale(1.014,1.05); }
+  78%  { transform:translateY(1.5px) scale(.995,.982); }
+  100% { opacity:1; transform:translateY(0) scale(1,1); }
+}
+@keyframes blockIn{
+  0%   { opacity:0; transform:scale(.86); }
+  60%  { opacity:1; transform:scale(1.05); }
+  100% { opacity:1; transform:scale(1); }
+}
+.enter{
+  animation:rubberIn .54s var(--ease-out) backwards;
+  animation-delay:var(--stagger,0ms);
+}
+.block.enter{
+  animation:blockIn .44s var(--ease-out) backwards;
+  animation-delay:var(--stagger,0ms);
+}
+
+/* ---------- view transitions (shared element) ---------- */
+::view-transition-group(course-hero){
+  animation-duration:.42s;
+  animation-timing-function:var(--ease-out);
+}
+::view-transition-old(root),
+::view-transition-new(root){
+  animation-duration:.26s;
+  animation-timing-function:ease;
+}
+body.vt-active .sheet,
+body.vt-active .sheet-backdrop{ transition:none !important; }
+
+@media (min-width:600px){
+  .app{ border-inline:1px solid var(--border); }
+}
+
+@media (prefers-reduced-motion: reduce){
+  .enter, .block.enter, .view.active, .empty-state, .room-title, .room-sub{ animation:none !important; }
+  .tab-indicator{ transition:none !important; }
+  *{ scroll-behavior:auto !important; }
+}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <header class="topbar">
+    <h1>دروس دانشگاه</h1>
+    <button class="theme-btn" id="themeBtn" aria-label="تغییر پوسته">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="1.7" stroke-linecap="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z"/></svg>
+    </button>
+  </header>
+
+  <main>
+    <!-- ===== تب جستجو ===== -->
+    <section class="view active" id="view-search">
+      <input class="search-input" id="searchInput" type="text" placeholder="نام درس یا نام استاد را جستجو کنید…" autocomplete="off">
+      <div class="result-count" id="searchCount"></div>
+      <div class="card-list" id="searchResults"></div>
+    </section>
+
+    <!-- ===== تب وضعیت کلاس ===== -->
+    <section class="view" id="view-room">
+      <div class="field-label">شماره یا نام کلاس</div>
+      <div class="suggest-box">
+        <input class="search-input" id="roomInput" type="text" inputmode="text" placeholder="مثلاً 609 یا آمفی تئاتر" autocomplete="off">
+        <div class="suggest-list" id="roomSuggest"></div>
+      </div>
+      <div id="roomEmpty" class="empty-state">یه شماره کلاس وارد کن تا برنامه‌ی هفتگی‌ش رو ببینی.</div>
+      <div id="roomResult"></div>
+    </section>
+
+    <!-- ===== تب کلاس خالی ===== -->
+    <section class="view" id="view-free">
+      <div class="field-label">روز</div>
+      <div class="day-chips" id="freeDayChips"></div>
+      <div class="field-label">بازه‌ی زمانی</div>
+      <div class="time-row">
+        <select class="select-input" id="freeStart"></select>
+        <span>تا</span>
+        <select class="select-input" id="freeEnd"></select>
+      </div>
+      <button class="now-btn" id="freeNowBtn">🕐 همین الان</button>
+      <button class="go-btn" id="freeGoBtn">نمایش کلاس‌های خالی</button>
+      <div id="freeResultWrap"></div>
+    </section>
+  </main>
+
+  <nav class="tabbar" id="tabbar">
+    <span class="tab-indicator" id="tabIndicator"></span>
+    <button class="tab sel" data-view="search">
+      <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3" stroke-linecap="round"/></svg>
+      <span>جستجو</span>
+    </button>
+    <button class="tab" data-view="room">
+      <svg viewBox="0 0 24 24"><rect x="3.5" y="4" width="17" height="16" rx="2.5"/><path d="M3.5 9.5h17M8 4v3M16 4v3" stroke-linecap="round"/></svg>
+      <span>وضعیت کلاس</span>
+    </button>
+    <button class="tab" data-view="free">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <span>کلاس خالی</span>
+    </button>
+  </nav>
+</div>
+
+<div class="sheet-backdrop" id="sheetBackdrop"></div>
+<div class="sheet" id="sheet">
+  <button class="sheet-close" id="sheetClose" aria-label="بستن">✕</button>
+  <div class="sheet-handle"></div>
+  <div id="sheetContent"></div>
+</div>
+
+<script src="database.js"></script>
+<script>
+(function(){
+"use strict";
+
+/* ================= ابزارهای عمومی ================= */
+var reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+var supportsVT = typeof document.startViewTransition === "function";
+
+/* ================= نرمال‌سازی متن فارسی ================= */
+var FA_DIGITS = "۰۱۲۳۴۵۶۷۸۹", AR_DIGITS = "٠١٢٣٤٥٦٧٨٩";
+function normalizePersian(str){
+  if(!str) return "";
+  str = String(str);
+  var out = "";
+  for(var i=0;i<str.length;i++){
+    var ch = str[i];
+    var fi = FA_DIGITS.indexOf(ch), ai = AR_DIGITS.indexOf(ch);
+    if(fi>-1) out += fi;
+    else if(ai>-1) out += ai;
+    else out += ch;
+  }
+  out = out
+    .replace(/\u064A/g,"\u06CC")   // ي -> ی
+    .replace(/\u0643/g,"\u06A9")   // ك -> ک
+    .replace(/[\u064B-\u065F\u0670\u06D6-\u06ED]/g,"") // اعراب
+    .replace(/\u0640/g,"")         // کشیده
+    .replace(/[\s\u200c]+/g," ")
+    .trim()
+    .toLowerCase();
+  return out;
+}
+function normalizeSearch(str){
+  return normalizePersian(str).replace(/[\s\u200c]+/g,"");
+}
+
+/* ================= روزهای هفته ================= */
+var DAY_KEYS   = ["شنبه","یکشنبه","دوشنبه","سه‌شنبه","چهارشنبه","پنجشنبه","جمعه"];
+var DAY_LABEL  = {"شنبه":"شنبه","یکشنبه":"یک‌شنبه","دوشنبه":"دوشنبه","سه‌شنبه":"سه‌شنبه","چهارشنبه":"چهارشنبه","پنجشنبه":"پنج‌شنبه","جمعه":"جمعه"};
+function canonDay(raw){
+  var n = normalizeSearch(raw);
+  for(var i=0;i<DAY_KEYS.length;i++){ if(n === DAY_KEYS[i]) return DAY_KEYS[i]; }
+  if(n.indexOf("یك") === 0) n = "یک" + n.slice(2);
+  for(var j=0;j<DAY_KEYS.length;j++){ if(n === DAY_KEYS[j]) return DAY_KEYS[j]; }
+  return null;
+}
+function toMin(t){
+  if(!t) return null;
+  var p = t.split(":"); if(p.length<2) return null;
+  var h = parseInt(p[0],10), m = parseInt(p[1],10);
+  if(isNaN(h)||isNaN(m)) return null;
+  return h*60+m;
+}
+function fmtMin(m){
+  var h = Math.floor(m/60), mm = m%60;
+  return (h<10?"0":"")+h+":"+(mm<10?"0":"")+mm;
+}
+
+/* ================= آماده‌سازی دیتا ================= */
+var COURSES = (window.COURSES || []);
+var SESSIONS = [];
+var placeSet = {};
+
+COURSES.forEach(function(course, idx){
+  course.__search = normalizePersian((course["نام درس"]||"") + " " + (course["نام استاد"]||""));
+  var sessions = course["زمان و مكان ارائه"] || [];
+  sessions.forEach(function(s){
+    var day = canonDay(s["روز"]);
+    var start = toMin(s["ساعت شروع"]), end = toMin(s["ساعت پایان"]);
+    if(day===null || start===null || end===null) return;
+    var place = (s["مکان"]||"").trim();
+    if(place) placeSet[place] = true;
+    SESSIONS.push({
+      courseIdx: idx, day: day, start:start, end:end,
+      place: place, roomNum: s["شماره_کلاس"] || null, type: s["نوع"]||""
+    });
+  });
+});
+
+var ALL_PLACES = Object.keys(placeSet).sort(function(a,b){
+  var na = a.match(/\d+/), nb = b.match(/\d+/);
+  if(na && nb) return parseInt(na[0],10) - parseInt(nb[0],10);
+  if(na) return -1; if(nb) return 1;
+  return a.localeCompare(b,"fa");
+});
+
+var TIME_SET = {};
+SESSIONS.forEach(function(s){ TIME_SET[s.start]=1; TIME_SET[s.end]=1; });
+var TIME_MARKS = Object.keys(TIME_SET).map(Number).sort(function(a,b){return a-b;});
+if(TIME_MARKS.length===0){ for(var h=8; h<=20; h++) TIME_MARKS.push(h*60); }
+
+/* ================= سوییچ تب‌ها + Shared Layout ================= */
+var tabs = Array.prototype.slice.call(document.querySelectorAll(".tab"));
+var views = {
+  search: document.getElementById("view-search"),
+  room:   document.getElementById("view-room"),
+  free:   document.getElementById("view-free")
+};
+var tabbarEl = document.getElementById("tabbar");
+var tabIndicator = document.getElementById("tabIndicator");
+var currentTab = "search";
+
+function moveIndicator(btn, animate){
+  if(!btn || !tabIndicator) return;
+  var barRect = tabbarEl.getBoundingClientRect();
+  var r = btn.getBoundingClientRect();
+  if(!r.width) return;
+  var w = r.width * 0.46;
+  var x = (r.left - barRect.left) + (r.width - w) / 2;
+  if(animate === false) tabIndicator.style.transition = "none";
+  tabIndicator.style.width = w + "px";
+  tabIndicator.style.transform = "translateX(" + x + "px)";
+  if(animate === false){
+    void tabIndicator.offsetWidth;
+    tabIndicator.style.transition = "";
+  }
+}
+
+function tabIndex(name){
+  for(var i=0;i<tabs.length;i++){ if(tabs[i].dataset.view === name) return i; }
+  return 0;
+}
+
+function activateTab(name){
+  if(name === currentTab && views[name].classList.contains("active")){
+    moveIndicator(tabs[tabIndex(name)], true);
+    return;
+  }
+  var idx = tabIndex(name), prevIdx = tabIndex(currentTab);
+  var dir = idx > prevIdx ? 1 : -1;
+  currentTab = name;
+
+  tabs.forEach(function(b){ b.classList.toggle("sel", b.dataset.view === name); });
+
+  Object.keys(views).forEach(function(k){
+    var el = views[k];
+    if(k === name){
+      el.style.setProperty("--dir", dir);
+      el.classList.remove("active");
+      void el.offsetWidth;          // ری‌استارت انیمیشن ورود
+      el.classList.add("active");
+    } else {
+      el.classList.remove("active");
+    }
+  });
+
+  moveIndicator(tabs[idx], true);
+}
+
+tabs.forEach(function(btn){
+  btn.addEventListener("click", function(){ activateTab(btn.dataset.view); });
+});
+
+function syncIndicator(){ moveIndicator(document.querySelector(".tab.sel"), false); }
+requestAnimationFrame(syncIndicator);
+window.addEventListener("load", function(){ setTimeout(syncIndicator, 80); });
+window.addEventListener("resize", syncIndicator);
+if(document.fonts && document.fonts.ready){ document.fonts.ready.then(syncIndicator); }
+
+/* ================= تم روشن/تیره ================= */
+var themeBtn = document.getElementById("themeBtn");
+try{
+  var savedTheme = localStorage.getItem("theme");
+  if(savedTheme) document.documentElement.setAttribute("data-theme", savedTheme);
+}catch(e){}
+themeBtn.addEventListener("click", function(){
+  var cur = document.documentElement.getAttribute("data-theme");
+  var isDark = cur ? cur==="dark" : window.matchMedia("(prefers-color-scheme: dark)").matches;
+  var next = isDark ? "light" : "dark";
+  document.documentElement.setAttribute("data-theme", next);
+  try{ localStorage.setItem("theme", next); }catch(e){}
+});
+
+/* ================= بات‌شیت جزئیات + Shared Element Transition ================= */
+var sheet = document.getElementById("sheet");
+var backdrop = document.getElementById("sheetBackdrop");
+var sheetContent = document.getElementById("sheetContent");
+var mergedState = null;
+var currentSourceEl = null;
+var HERO_NAME = "course-hero";
+
+function showSheetEl(){ sheet.classList.add("show"); backdrop.classList.add("show"); }
+
+// باز کردن شیت. اگر sourceEl بدیم، از Shared Element Transition استفاده می‌شه.
+function openSheet(html, sourceEl){
+  mergedState = null;
+  currentSourceEl = sourceEl || null;
+
+  if(supportsVT && sourceEl && !reduceMotion && sourceEl.isConnected){
+    var el = sourceEl;
+    el.style.viewTransitionName = HERO_NAME;
+    var vt;
+    try{
+      vt = document.startViewTransition(function(){
+        el.style.viewTransitionName = "";
+        sheetContent.innerHTML = html;
+        var h2 = sheetContent.querySelector("h2");
+        if(h2) h2.style.viewTransitionName = HERO_NAME;
+        document.body.classList.add("vt-active");
+        showSheetEl();
+      });
+    }catch(err){
+      el.style.viewTransitionName = "";
+      sheetContent.innerHTML = html;
+      showSheetEl();
+      return;
+    }
+    vt.finished.finally(function(){
+      var h2 = sheetContent.querySelector("h2");
+      if(h2) h2.style.viewTransitionName = "";
+      document.body.classList.remove("vt-active");
+    });
+    return;
+  }
+
+  sheetContent.innerHTML = html;
+  showSheetEl();
+}
+
+function closeSheet(){
+  var el = currentSourceEl;
+  mergedState = null;
+  currentSourceEl = null;
+
+  if(supportsVT && el && !reduceMotion && el.isConnected){
+    var r = el.getBoundingClientRect();
+    var onScreen = r.bottom > 0 && r.top < window.innerHeight;
+    if(onScreen){
+      var vt;
+      try{
+        vt = document.startViewTransition(function(){
+          var h2 = sheetContent.querySelector("h2");
+          if(h2) h2.style.viewTransitionName = "";
+          document.body.classList.add("vt-active");
+          sheet.classList.remove("show");
+          backdrop.classList.remove("show");
+          el.style.viewTransitionName = HERO_NAME;
+        });
+      }catch(err){
+        sheet.classList.remove("show");
+        backdrop.classList.remove("show");
+        return;
+      }
+      vt.finished.finally(function(){
+        el.style.viewTransitionName = "";
+        document.body.classList.remove("vt-active");
+        sheetContent.innerHTML = "";
+      });
+      return;
+    }
+  }
+
+  sheet.classList.remove("show");
+  backdrop.classList.remove("show");
+}
+
+document.getElementById("sheetClose").addEventListener("click", closeSheet);
+backdrop.addEventListener("click", closeSheet);
+
+function courseDetailHTML(course){
+  var cap = course["ظرفیت"], reg = course["ثبت نام شده"];
+  var html = "";
+  html += "<h2>"+escapeHTML(course["نام درس"]||"")+"</h2>";
+  html += "<div class='sub'>"+escapeHTML(course["نام استاد"]||"")+" · "+escapeHTML(course["گروه آموزشي"]||"")+"</div>";
+  html += "<div class='info-grid'>";
+  html += infoBox("ظرفیت / ثبت‌نام", (reg!=null?reg:"—")+" از "+(cap!=null?cap:"—"));
+  html += infoBox("لیست انتظار", course["تعداد لیست انتظار"]!=null? course["تعداد لیست انتظار"] : "۰");
+  html += infoBox("واحد", (course["کل"]!=null?course["کل"]:"—")+(course["ع"]?(" ("+course["ع"]+" عملی)"):""));
+  html += infoBox("جنسیت", course["جنسيت"]||"—");
+  html += "</div>";
+  html += "<div class='block-title'>زمان و مکان ارائه</div><pre>"+escapeHTML(course["زمان و مكان ارائه متن"]||"—")+"</pre>";
+  if(course["زمان و مكان امتحان متن"]){
+    html += "<div class='block-title'>زمان و مکان امتحان</div><pre>"+escapeHTML(course["زمان و مكان امتحان متن"])+"</pre>";
+  }
+  if(course["توضيحات متن"]){
+    html += "<div class='block-title'>توضیحات</div><pre>"+escapeHTML(course["توضيحات متن"])+"</pre>";
+  }
+  return html;
+}
+function infoBox(k,v){ return "<div class='info-box'><div class='k'>"+k+"</div><div class='v'>"+escapeHTML(String(v))+"</div></div>"; }
+function escapeHTML(s){ return String(s).replace(/[&<>"']/g, function(c){ return {"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]; }); }
+
+function openMergedSheet(idxs, sourceEl){
+  mergedState = { idxs: idxs, pos: 0 };
+  // برای درس‌های هم‌زمان، کارتِ مبدأ به عنوان shared element استفاده می‌شه
+  openSheet(mergedHTML(), sourceEl);
+  bindMergedNav();
+}
+function mergedHTML(){
+  if(!mergedState) return "";
+  var idxs = mergedState.idxs, pos = mergedState.pos;
+  var c = COURSES[idxs[pos]];
+  var nav = "<div class='carousel-nav'>"
+    + "<button class='car-btn' id='carPrev'"+(pos===0?" disabled":"")+" aria-label='درس قبلی'>›</button>"
+    + "<span class='car-count'>"+(pos+1)+" از "+idxs.length+" درس هم‌زمان</span>"
+    + "<button class='car-btn' id='carNext'"+(pos===idxs.length-1?" disabled":"")+" aria-label='درس بعدی'>‹</button>"
+    + "</div>";
+  return nav + "<div class='car-slide'>" + courseDetailHTML(c) + "</div>";
+}
+function bindMergedNav(){
+  var prevBtn = document.getElementById("carPrev"), nextBtn = document.getElementById("carNext");
+  if(prevBtn) prevBtn.addEventListener("click", function(){ moveMerged(-1); });
+  if(nextBtn) nextBtn.addEventListener("click", function(){ moveMerged(1); });
+}
+function moveMerged(delta){
+  if(!mergedState) return;
+  var next = mergedState.pos + delta;
+  if(next<0 || next>=mergedState.idxs.length) return;
+  mergedState.pos = next;
+  sheetContent.innerHTML = mergedHTML();
+  bindMergedNav();
+}
+// سوایپ روی بات‌شیت برای رفتن به درس هم‌زمان بعدی/قبلی
+var touchStartX = null;
+sheet.addEventListener("touchstart", function(e){ touchStartX = e.touches[0].clientX; }, {passive:true});
+sheet.addEventListener("touchend", function(e){
+  if(touchStartX===null || !mergedState){ touchStartX=null; return; }
+  var dx = e.changedTouches[0].clientX - touchStartX;
+  touchStartX = null;
+  if(Math.abs(dx) < 40) return;
+  if(dx < 0) moveMerged(1); else moveMerged(-1);
+}, {passive:true});
+// کلیک روی کارت‌های داخل خودِ بات‌شیت
+sheetContent.addEventListener("click", function(e){
+  var btn = e.target.closest(".course-card"); if(!btn) return;
+  openSheet(courseDetailHTML(COURSES[Number(btn.dataset.idx)]));
+});
+
+/* ================= تب جستجو (Rubber Band + Stagger) ================= */
+var searchInput = document.getElementById("searchInput");
+var searchResults = document.getElementById("searchResults");
+var searchCount = document.getElementById("searchCount");
+var searchTimer = null;
+searchInput.addEventListener("input", function(){
+  clearTimeout(searchTimer);
+  searchTimer = setTimeout(runSearch, 150);
+});
+
+var STAGGER_STEP = 34;      // فاصله‌ی بین آیتم‌ها
+var STAGGER_MAX_ITEMS = 18; // بعد از این تعداد، انیمیشن ورود اجرا نمی‌شه
+var STAGGER_CAP = 520;      // سقف تاخیر
+
+function staggerVars(i){
+  var delay = Math.min(i * STAGGER_STEP, STAGGER_CAP);
+  return " style='--stagger:" + delay + "ms'";
+}
+
+function runSearch(){
+  var tokens = normalizePersian(searchInput.value).split(" ").filter(Boolean);
+  if(tokens.length===0){ searchResults.innerHTML=""; searchCount.textContent=""; return; }
+  var matches = [];
+  for(var i=0;i<COURSES.length;i++){
+    var hay = COURSES[i].__search;
+    var ok = true;
+    for(var t=0;t<tokens.length;t++){ if(hay.indexOf(tokens[t]) === -1){ ok=false; break; } }
+    if(ok){ matches.push(i); if(matches.length>=150) break; }
+  }
+  searchCount.textContent = matches.length ? (matches.length+" نتیجه"+(matches.length>=150?" (۱۵۰ مورد اول)":"")) : "";
+  if(matches.length===0){
+    searchResults.innerHTML = "<div class='empty-state'>چیزی پیدا نشد — نام درس یا استاد دیگه‌ای رو امتحان کن.</div>";
+    return;
+  }
+  var html = "";
+  matches.forEach(function(idx, i){
+    var c = COURSES[idx];
+    var cap = c["ظرفیت"], reg = c["ثبت نام شده"];
+    var full = cap!=null && reg!=null && reg>=cap;
+    var firstLine = (c["زمان و مكان ارائه متن"]||"").split("\n")[0];
+    var enterCls = i < STAGGER_MAX_ITEMS ? " enter" : "";
+    html += "<button class='course-card"+enterCls+"'"+staggerVars(i)+" data-idx='"+idx+"'>"
+      + "<div class='title'>"+escapeHTML(c["نام درس"]||"")+"</div>"
+      + "<div class='meta'>"+escapeHTML(c["نام استاد"]||"")+"</div>"
+      + "<div class='row2'>"
+        + "<span class='time'>"+escapeHTML(firstLine)+"</span>"
+        + "<span class='badge "+(full?"busy":"free")+"'>"+(full?"تکمیل":( (cap!=null&&reg!=null) ? (cap-reg)+" جا خالی" : "" ))+"</span>"
+      + "</div>"
+    + "</button>";
+  });
+  searchResults.innerHTML = html;
+}
+searchResults.addEventListener("click", function(e){
+  var btn = e.target.closest(".course-card"); if(!btn) return;
+  openSheet(courseDetailHTML(COURSES[Number(btn.dataset.idx)]), btn);
+});
+
+/* ================= تب وضعیت کلاس ================= */
+var roomInput = document.getElementById("roomInput");
+var roomSuggest = document.getElementById("roomSuggest");
+var roomEmpty = document.getElementById("roomEmpty");
+var roomResult = document.getElementById("roomResult");
+roomInput.addEventListener("input", function(){
+  var q = normalizeSearch(roomInput.value);
+  if(!q){ roomSuggest.classList.remove("show"); return; }
+  var list = ALL_PLACES.filter(function(p){ return normalizeSearch(p).indexOf(q) > -1; }).slice(0,25);
+  if(list.length===0){ roomSuggest.classList.remove("show"); return; }
+  roomSuggest.innerHTML = list.map(function(p){ return "<button data-place='"+escapeHTML(p)+"'>"+escapeHTML(p)+"</button>"; }).join("");
+  roomSuggest.classList.add("show");
+});
+roomSuggest.addEventListener("click", function(e){
+  var btn = e.target.closest("button"); if(!btn) return;
+  roomInput.value = btn.dataset.place;
+  roomSuggest.classList.remove("show");
+  selectRoom(btn.dataset.place);
+});
+document.addEventListener("click", function(e){
+  if(!roomInput.contains(e.target) && !roomSuggest.contains(e.target)) roomSuggest.classList.remove("show");
+});
+
+function selectRoom(place){
+  var sessions = SESSIONS.filter(function(s){ return s.place === place; });
+  roomEmpty.style.display = "none";
+  if(sessions.length===0){
+    roomResult.innerHTML = "<div class='empty-state'>برنامه‌ای برای «"+escapeHTML(place)+"» پیدا نشد.</div>";
+    return;
+  }
+  var daysShown = DAY_KEYS.filter(function(d){
+    return d !== "جمعه" || sessions.some(function(s){ return s.day === d; });
+  });
+
+  var minStart = Math.min.apply(null, sessions.map(function(s){return s.start;}));
+  var maxEnd   = Math.max.apply(null, sessions.map(function(s){return s.end;}));
+  minStart = Math.floor(minStart/60)*60; if(minStart<0) minStart=0;
+  maxEnd   = Math.ceil(maxEnd/60)*60;
+  if(maxEnd - minStart < 180){ maxEnd = minStart + 180; }
+  var span = maxEnd - minStart;
+  var hrs = Math.max(1, Math.round(span/60));
+  var pxPerHour = 78;
+  var trackW = hrs * pxPerHour;
+  function pct(min){ return (min/span*100).toFixed(4) + "%"; }
+
+  var html = "<div class='room-title'>"+escapeHTML(place)+"</div>";
+  html += "<div class='room-sub'>"+sessions.length+" جلسه در هفته</div>";
+  html += "<div class='legend'><span><i class='busy'></i>پر</span><span><i class='free'></i>خالی</span></div>";
+  html += "<div class='grid-wrap' id='gridWrap'><div class='sched' style='--track-w:"+trackW+"px; --hrs:"+hrs+";'>";
+
+  html += "<div class='sched-row sched-head'><div class='day-lbl'></div><div class='track'>";
+  for(var hh=minStart; hh<maxEnd; hh+=60){
+    html += "<div class='hour-lbl' style='right:"+pct(hh-minStart)+";'>"+fmtMin(hh)+"</div>";
+  }
+  html += "</div></div>";
+
+  var blockIndex = 0;
+
+  daysShown.forEach(function(d, dayIdx){
+    html += "<div class='sched-row'><div class='day-lbl'>"+DAY_LABEL[d]+"</div><div class='track'>";
+    var groups = {}, order = [];
+    sessions.filter(function(s){return s.day===d;}).forEach(function(s){
+      var key = s.start+"-"+s.end;
+      if(!groups[key]){ groups[key] = []; order.push(key); }
+      groups[key].push(s);
+    });
+    order.forEach(function(key){
+      var group = groups[key], s0 = group[0];
+      var pos = "right:calc("+pct(s0.start-minStart)+" + 1px); width:calc("+pct(s0.end-s0.start)+" - 2px);";
+      var idxs = group.map(function(s){return s.courseIdx;}).join(",");
+      var time = fmtMin(s0.start)+"–"+fmtMin(s0.end);
+      var delay = Math.min(blockIndex * 30, 420);
+      var anim = " block-enter";
+      var styleExtra = ";--stagger:" + delay + "ms";
+      blockIndex++;
+
+      if(group.length === 1){
+        var c = COURSES[s0.courseIdx];
+        html += "<button class='block enter' style='"+pos+styleExtra+"' data-idxs='"+idxs+"'>"
+              + "<div class='b-title'>"+escapeHTML(c["نام درس"]||"")+"</div>"
+              + "<div class='b-sub'>"+time+"</div>"
+              + "</button>";
+      } else {
+        var titles = group.map(function(s){ return COURSES[s.courseIdx]["نام درس"]||""; }).join(" / ");
+        html += "<button class='block enter' style='"+pos+styleExtra+"' data-idxs='"+idxs+"'>"
+              + "<span class='b-count'>"+group.length+"</span>"
+              + "<div class='b-title'>"+escapeHTML(titles)+"</div>"
+              + "<div class='b-sub'>"+time+"</div>"
+              + "</button>";
+      }
+    });
+    html += "</div></div>";
+  });
+  html += "</div></div>";
+  roomResult.innerHTML = html;
+  roomResult.querySelectorAll(".block").forEach(function(b){
+    b.addEventListener("click", function(){
+      var idxs = b.dataset.idxs.split(",").map(Number);
+      if(idxs.length === 1) openSheet(courseDetailHTML(COURSES[idxs[0]]), b);
+      else openMergedSheet(idxs, b);
+    });
+  });
+}
+
+/* ================= تب کلاس خالی ================= */
+var freeDayChips = document.getElementById("freeDayChips");
+var selectedFreeDay = DAY_KEYS[0];
+function setFreeDay(d){
+  selectedFreeDay = d;
+  freeDayChips.querySelectorAll(".day-chip").forEach(function(c){ c.classList.toggle("sel", c.dataset.day===d); });
+}
+DAY_KEYS.slice(0,7).forEach(function(d){
+  var b = document.createElement("button");
+  b.className = "day-chip" + (d===selectedFreeDay ? " sel":"");
+  b.textContent = DAY_LABEL[d];
+  b.dataset.day = d;
+  b.addEventListener("click", function(){ setFreeDay(d); });
+  freeDayChips.appendChild(b);
+});
+
+var freeStart = document.getElementById("freeStart"), freeEnd = document.getElementById("freeEnd");
+TIME_MARKS.forEach(function(m){
+  var o1=document.createElement("option"); o1.value=m; o1.textContent=fmtMin(m); freeStart.appendChild(o1);
+  var o2=document.createElement("option"); o2.value=m; o2.textContent=fmtMin(m); freeEnd.appendChild(o2);
+});
+freeStart.selectedIndex = 0;
+freeEnd.selectedIndex = Math.min(TIME_MARKS.length-1, 1);
+
+function roomNumber(place){
+  var m = place.match(/\d+/);
+  return m ? parseInt(m[0],10) : null;
+}
+function isNegativeRoom(place){
+  var trimmed = place.trim().replace(/[)\]]+$/,"").trim();
+  return /-$/.test(trimmed);
+}
+
+var placeItemIndex = 0;
+function placeItemHTML(p){
+  var i = placeItemIndex++;
+  var enterCls = i < 24 ? " enter" : "";
+  return "<button type='button' class='place-item"+enterCls+"'"+staggerVars(i)+" data-place='"+escapeHTML(p)+"'><span class='name'>"+escapeHTML(p)+"</span><span class='dot'></span></button>";
+}
+
+document.getElementById("freeResultWrap").addEventListener("click", function(e){
+  var btn = e.target.closest(".place-item"); if(!btn) return;
+  var place = btn.dataset.place;
+  roomInput.value = place;
+  roomSuggest.classList.remove("show");
+  selectRoom(place);
+  activateTab("room");
+  window.scrollTo(0,0);
+});
+
+function showFreeRooms(){
+  var s = Number(freeStart.value), e = Number(freeEnd.value);
+  var wrap = document.getElementById("freeResultWrap");
+  if(e <= s){ wrap.innerHTML = "<div class='empty-state'>ساعت پایان باید بعد از ساعت شروع باشه.</div>"; return; }
+  var busy = {};
+  SESSIONS.forEach(function(sess){
+    if(sess.day !== selectedFreeDay) return;
+    if(sess.start < e && sess.end > s) busy[sess.place] = true;
+  });
+  var free = ALL_PLACES.filter(function(p){ return !busy[p]; });
+  if(free.length===0){
+    wrap.innerHTML = "<div class='empty-state'>توی این بازه هیچ کلاسی خالی نیست.</div>";
+    return;
+  }
+  var buckets = {}, order = [], negativeList = [];
+  free.forEach(function(p){
+    if(isNegativeRoom(p)){ negativeList.push(p); return; }
+    var num = roomNumber(p);
+    var key = num===null ? "other" : String(Math.floor(num/100)*100);
+    if(!buckets[key]){ buckets[key]=[]; order.push(key); }
+    buckets[key].push(p);
+  });
+  order.forEach(function(key){ buckets[key].sort(function(a,b){ return (roomNumber(b)||0)-(roomNumber(a)||0); }); });
+  negativeList.sort(function(a,b){ return (roomNumber(b)||0)-(roomNumber(a)||0); });
+  order.sort(function(a,b){
+    if(a==="other") return 1; if(b==="other") return -1;
+    return Number(b)-Number(a);
+  });
+
+  placeItemIndex = 0;
+  var html = "<div class='result-count'>"+free.length+" کلاس خالی از "+ALL_PLACES.length+" مورد</div>";
+  order.forEach(function(key){
+    var title = key==="other" ? "سایر مکان‌ها" : "کلاس‌های "+key+" تا "+(Number(key)+99);
+    html += "<div class='place-group'><div class='place-group-title'>"+title+"</div><div class='place-list'>";
+    buckets[key].forEach(function(p){ html += placeItemHTML(p); });
+    html += "</div></div>";
+  });
+  if(negativeList.length){
+    html += "<div class='place-group'>"
+      + "<button type='button' class='place-group-title neg-toggle' id='negToggle'>کلاس‌های منفی ("+negativeList.length+")<span class='neg-chevron'>▾</span></button>"
+      + "<div class='place-list' id='negList' style='display:none;'>";
+    negativeList.forEach(function(p){ html += placeItemHTML(p); });
+    html += "</div></div>";
+  }
+  wrap.innerHTML = html;
+
+  var negToggle = document.getElementById("negToggle");
+  if(negToggle){
+    negToggle.addEventListener("click", function(){
+      var list = document.getElementById("negList");
+      var isOpen = list.style.display !== "none";
+      list.style.display = isOpen ? "none" : "flex";
+      negToggle.querySelector(".neg-chevron").textContent = isOpen ? "▾" : "▴";
+      if(!isOpen){
+        // وقتی باز می‌شه، آیتم‌ها با استگر ظاهر بشن
+        Array.prototype.forEach.call(list.children, function(el, i){
+          el.classList.remove("enter");
+          el.style.setProperty("--stagger", Math.min(i*28, 300) + "ms");
+          void el.offsetWidth;
+          el.classList.add("enter");
+        });
+      }
+    });
+  }
+}
+document.getElementById("freeGoBtn").addEventListener("click", showFreeRooms);
+
+document.getElementById("freeNowBtn").addEventListener("click", function(){
+  var now = new Date();
+  var ourDay = DAY_KEYS[(now.getDay()+1)%7];
+  setFreeDay(ourDay);
+  var nowMin = now.getHours()*60 + now.getMinutes();
+  var idx = TIME_MARKS.findIndex(function(m){ return m > nowMin; });
+  var startMark, endMark;
+  if(idx === -1){
+    startMark = TIME_MARKS.length>1 ? TIME_MARKS[TIME_MARKS.length-2] : TIME_MARKS[0];
+    endMark = TIME_MARKS[TIME_MARKS.length-1];
+  } else if(idx === 0){
+    startMark = TIME_MARKS[0];
+    endMark = TIME_MARKS.length>1 ? TIME_MARKS[1] : TIME_MARKS[0];
+  } else {
+    startMark = TIME_MARKS[idx-1];
+    endMark = TIME_MARKS[idx];
+  }
+  freeStart.value = String(startMark);
+  freeEnd.value = String(endMark);
+  showFreeRooms();
+});
+
+/* ================= سرویس‌ورکر ================= */
+if("serviceWorker" in navigator){
+  window.addEventListener("load", function(){
+    navigator.serviceWorker.register("service-worker.js").catch(function(){});
+  });
+}
+
+})();
+</script>
+</body>
+</html>
