@@ -18,8 +18,6 @@
   --shadow:rgba(20,30,28,.10);
   --radius:14px; --radius-sm:9px;
   --safe-t:env(safe-area-inset-top,0px); --safe-b:env(safe-area-inset-bottom,0px);
-  --ease-out:cubic-bezier(.22,1,.36,1);
-  --ease-spring:cubic-bezier(.34,1.42,.5,1);
   color-scheme: light;
 }
 @media (prefers-color-scheme: dark){
@@ -60,38 +58,63 @@ button,input,select{ font-family:inherit; font-size:inherit; color:inherit; }
 .theme-btn{
   width:38px; height:38px; border-radius:50%; border:1px solid var(--border);
   background:var(--surface); display:flex; align-items:center; justify-content:center;
-  cursor:pointer; transition:transform .3s var(--ease-spring), background .18s ease;
+  cursor:pointer;
 }
-.theme-btn:active{ transform:scale(.9) rotate(-18deg); }
 .theme-btn svg{ width:18px; height:18px; stroke:var(--text-muted); }
 
 /* ---------- views ---------- */
 main{ flex:1; padding:2px 14px 18px; }
 .view{ display:none; }
-.view.active{ display:block; animation:viewIn .3s var(--ease-out) both; }
-@keyframes viewIn{
-  from{ opacity:0; transform:translateX(calc(var(--dir,1) * 16px)) scale(.994); }
-  to{ opacity:1; transform:none; }
-}
+.view.active{ display:block; animation:fade .18s ease; }
+@keyframes fade{ from{opacity:0; transform:translateY(4px);} to{opacity:1; transform:translateY(0);} }
 
 .field-label{ font-size:13px; font-weight:600; color:var(--text-muted); margin:14px 2px 8px; }
 .search-input, .select-input{
   width:100%; padding:13px 14px; border-radius:var(--radius); border:1px solid var(--border);
   background:var(--surface); color:var(--text); outline:none;
-  transition:border-color .18s ease, box-shadow .18s ease;
 }
-.search-input:focus, .select-input:focus{ border-color:var(--free); box-shadow:0 0 0 3px var(--free-soft); }
+.search-input:focus, .select-input:focus{ border-color:var(--free); }
 .hint{ font-size:12.5px; color:var(--text-muted); margin:8px 2px 0; }
 
 /* ---------- result cards ---------- */
 .result-count{ font-size:12.5px; color:var(--text-muted); margin:14px 2px 8px; }
 .card-list{ display:flex; flex-direction:column; gap:9px; }
+
+/* 1. Rubber Band & Staggered Card Rise */
 .course-card{
   text-align:right; width:100%; background:var(--surface); border:1px solid var(--border);
   border-radius:var(--radius); padding:12px 14px; cursor:pointer;
-  transition:transform .2s var(--ease-spring), border-color .18s ease, background .18s ease;
+  opacity: 0;
+  animation: staggeredRise 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation-delay: calc(var(--stagger-index, 0) * 0.04s);
+  transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+  will-change: transform;
 }
-.course-card:active{ transform:scale(.972); border-color:var(--free); }
+.course-card:active{
+  animation: rubberBand 0.45s ease-in-out;
+}
+
+@keyframes staggeredRise {
+  from {
+    opacity: 0;
+    transform: translateY(24px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes rubberBand {
+  0% { transform: scale(1, 1); }
+  30% { transform: scale(1.1, 0.85); }
+  40% { transform: scale(0.9, 1.1); }
+  50% { transform: scale(1.04, 0.96); }
+  65% { transform: scale(0.98, 1.02); }
+  75% { transform: scale(1.01, 0.99); }
+  100% { transform: scale(1, 1); }
+}
+
 .course-card .title{ font-weight:700; font-size:15px; }
 .course-card .meta{ color:var(--text-muted); font-size:13px; margin-top:3px; }
 .course-card .row2{ display:flex; align-items:center; justify-content:space-between; margin-top:8px; gap:8px;}
@@ -102,7 +125,6 @@ main{ flex:1; padding:2px 14px 18px; }
 
 .empty-state{
   text-align:center; color:var(--text-muted); padding:40px 20px; font-size:13.5px;
-  animation:viewIn .3s var(--ease-out) both;
 }
 
 /* ---------- room view ---------- */
@@ -112,12 +134,10 @@ main{ flex:1; padding:2px 14px 18px; }
   border:1px solid var(--border); border-radius:var(--radius-sm); overflow:hidden; z-index:5;
   box-shadow:0 8px 24px var(--shadow); max-height:220px; overflow-y:auto; display:none;
 }
-.suggest-list.show{ display:block; animation:popIn .18s var(--ease-out) both; }
-@keyframes popIn{ from{ opacity:0; transform:translateY(-6px) scale(.985);} to{ opacity:1; transform:none; } }
+.suggest-list.show{ display:block; }
 .suggest-list button{
   display:block; width:100%; text-align:right; padding:10px 14px; border:0; background:none;
   border-bottom:1px solid var(--border); cursor:pointer; color:var(--text);
-  transition:background .15s ease;
 }
 .suggest-list button:last-child{ border-bottom:0; }
 .suggest-list button:active{ background:var(--surface-2); }
@@ -128,8 +148,8 @@ main{ flex:1; padding:2px 14px 18px; }
 .legend i.free{ background:var(--free); }
 .legend i.busy{ background:var(--busy); }
 
-.room-title{ font-size:16px; font-weight:700; margin:16px 2px 2px; animation:viewIn .3s var(--ease-out) both; }
-.room-sub{ font-size:12.5px; color:var(--text-muted); margin:0 2px 10px; animation:viewIn .3s var(--ease-out) .03s both; }
+.room-title{ font-size:16px; font-weight:700; margin:16px 2px 2px; }
+.room-sub{ font-size:12.5px; color:var(--text-muted); margin:0 2px 10px; }
 
 .grid-wrap{ overflow-x:auto; border:1px solid var(--border); border-radius:var(--radius); background:var(--surface); }
 .sched{ display:flex; flex-direction:column; min-width:100%; width:max-content; }
@@ -159,10 +179,7 @@ main{ flex:1; padding:2px 14px 18px; }
   position:absolute; top:5px; bottom:5px; border-radius:7px; padding:4px 6px; overflow:hidden;
   background:var(--busy-soft); border:1px solid var(--busy); cursor:pointer; text-align:right;
   display:flex; flex-direction:column; justify-content:center; gap:1px;
-  transition:transform .2s var(--ease-spring), box-shadow .2s ease;
-  transform-origin:center;
 }
-.block:active{ transform:scale(.94); box-shadow:0 0 0 3px var(--busy-soft); }
 .block .b-title{
   font-size:10.5px; font-weight:700; line-height:1.45; color:var(--busy);
   display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;
@@ -178,25 +195,21 @@ main{ flex:1; padding:2px 14px 18px; }
 .day-chip{
   padding:9px 4px; border-radius:10px; border:1px solid var(--border); text-align:center;
   background:var(--surface); cursor:pointer; font-size:12.5px;
-  transition:transform .22s var(--ease-spring), background .2s ease, border-color .2s ease, color .2s ease;
 }
-.day-chip:active{ transform:scale(.93); }
-.day-chip.sel{ background:var(--free); border-color:var(--free); color:#fff; font-weight:700; transform:scale(1.02); }
+.day-chip.sel{ background:var(--free); border-color:var(--free); color:#fff; font-weight:700; }
 .time-row{ display:flex; gap:10px; align-items:center; }
 .time-row .select-input{ flex:1; }
 .time-row span{ color:var(--text-muted); font-size:13px; }
 .now-btn{
   width:100%; margin-top:10px; padding:11px; border-radius:var(--radius); cursor:pointer;
   background:var(--free-soft); color:var(--free); border:1px solid var(--free); font-weight:700; font-size:13.5px;
-  transition:transform .22s var(--ease-spring), opacity .2s ease;
 }
-.now-btn:active{ opacity:.8; transform:scale(.97); }
+.now-btn:active{ opacity:.8; }
 .go-btn{
   width:100%; margin-top:10px; padding:13px; border:0; border-radius:var(--radius);
   background:var(--free); color:#fff; font-weight:700; font-size:15px; cursor:pointer;
-  transition:transform .22s var(--ease-spring), opacity .2s ease, box-shadow .2s ease;
 }
-.go-btn:active{ opacity:.85; transform:scale(.97); box-shadow:0 6px 18px var(--free-soft); }
+.go-btn:active{ opacity:.85; }
 .place-group{ margin-top:16px; }
 .place-group-title{ font-size:12.5px; font-weight:700; color:var(--text-muted); margin:0 2px 8px; }
 button.place-group-title{ border:0; background:none; width:100%; padding:0; font-family:inherit; cursor:pointer; display:flex; align-items:center; justify-content:space-between; }
@@ -206,25 +219,33 @@ button.place-group-title{ border:0; background:none; width:100%; padding:0; font
   display:flex; align-items:center; justify-content:space-between; background:var(--surface);
   border:1px solid var(--border); border-radius:var(--radius-sm); padding:11px 14px;
   width:100%; text-align:right; cursor:pointer;
-  transition:transform .2s var(--ease-spring), background .18s ease, border-color .18s ease;
 }
-.place-item:active{ background:var(--surface-2); transform:scale(.975); border-color:var(--free); }
+.place-item:active{ background:var(--surface-2); }
 .place-item .name{ font-weight:600; font-size:14px; }
 .place-item .dot{ width:9px; height:9px; border-radius:50%; background:var(--free); flex:none; }
 
 /* ---------- bottom sheet ---------- */
 .sheet-backdrop{
   position:fixed; inset:0; background:rgba(10,14,13,.5); z-index:20; opacity:0; pointer-events:none;
-  transition:opacity .2s ease;
+  transition:opacity .25s ease;
 }
 .sheet-backdrop.show{ opacity:1; pointer-events:auto; }
 .sheet{
   position:fixed; right:0; left:0; bottom:0; z-index:21; background:var(--surface);
   border-radius:18px 18px 0 0; max-height:82vh; overflow-y:auto; transform:translateY(100%);
-  transition:transform .26s var(--ease-out); padding:16px 18px calc(20px + var(--safe-b));
+  transition:transform .3s cubic-bezier(0.16, 1, 0.3, 1), top .3s cubic-bezier(0.16, 1, 0.3, 1), left .3s cubic-bezier(0.16, 1, 0.3, 1), width .3s cubic-bezier(0.16, 1, 0.3, 1), height .3s cubic-bezier(0.16, 1, 0.3, 1), border-radius .3s ease;
+  padding:16px 18px calc(20px + var(--safe-b));
   box-shadow:0 -8px 30px var(--shadow);
+  will-change: transform, top, left, width, height;
 }
 .sheet.show{ transform:translateY(0); }
+
+/* 2. Shared Element Transition Extra CSS */
+.sheet.shared-animating {
+  transition: all 0.38s cubic-bezier(0.34, 1.25, 0.64, 1) !important;
+  max-height: none !important;
+}
+
 .sheet-handle{ width:36px; height:4px; border-radius:99px; background:var(--border); margin:0 auto 14px; }
 .sheet h2{ font-size:17px; margin:0 0 4px; }
 .sheet .sub{ color:var(--text-muted); font-size:13px; margin-bottom:14px; }
@@ -234,85 +255,90 @@ button.place-group-title{ border:0; background:none; width:100%; padding:0; font
 .info-box .v{ font-size:14px; font-weight:700; margin-top:2px; }
 .sheet .block-title{ font-size:13px; font-weight:700; margin:14px 0 6px; color:var(--text-muted); }
 .sheet pre{ white-space:pre-wrap; font-family:inherit; font-size:13.5px; background:var(--surface-2); border-radius:var(--radius-sm); padding:10px 12px; margin:0; line-height:1.8; }
-.sheet-close{ position:absolute; left:16px; top:16px; width:32px; height:32px; border-radius:50%; border:1px solid var(--border); background:var(--surface-2); display:flex; align-items:center; justify-content:center; cursor:pointer; transition:transform .25s var(--ease-spring); }
-.sheet-close:active{ transform:scale(.86) rotate(90deg); }
+.sheet-close{ position:absolute; left:16px; top:16px; width:32px; height:32px; border-radius:50%; border:1px solid var(--border); background:var(--surface-2); display:flex; align-items:center; justify-content:center; cursor:pointer; z-index: 2; }
 .carousel-nav{ display:flex; align-items:center; justify-content:space-between; margin:0 0 14px; padding-inline-end:40px; }
 .car-btn{
   width:34px; height:34px; border-radius:50%; border:1px solid var(--border); background:var(--surface-2);
   font-size:18px; line-height:1; cursor:pointer; display:flex; align-items:center; justify-content:center; flex:none;
-  transition:transform .25s var(--ease-spring), opacity .2s ease;
 }
-.car-btn:active{ transform:scale(.88); }
 .car-btn:disabled{ opacity:.3; cursor:default; }
 .car-count{ font-size:12.5px; color:var(--text-muted); font-weight:600; }
-.car-slide{ animation:carIn .22s var(--ease-out); }
-@keyframes carIn{ from{ opacity:0; transform:translateX(10px) scale(.99);} to{ opacity:1; transform:none;} }
 
-/* ---------- tab bar ---------- */
+/* 3. Book Flip Animation for Multi-Course Switch */
+.carousel-container {
+  perspective: 1000px;
+}
+.car-slide {
+  transform-origin: right center;
+  backface-visibility: hidden;
+  will-change: transform, opacity;
+}
+.car-slide.flip-next {
+  animation: bookFlipNext 0.45s cubic-bezier(0.4, 0.0, 0.2, 1) forwards;
+}
+.car-slide.flip-prev {
+  animation: bookFlipPrev 0.45s cubic-bezier(0.4, 0.0, 0.2, 1) forwards;
+}
+
+@keyframes bookFlipNext {
+  0% {
+    transform: rotateY(0deg);
+    opacity: 1;
+  }
+  50% {
+    transform: rotateY(-90deg) scale(0.95);
+    opacity: 0.5;
+  }
+  100% {
+    transform: rotateY(0deg);
+    opacity: 1;
+  }
+}
+
+@keyframes bookFlipPrev {
+  0% {
+    transform: rotateY(0deg);
+    opacity: 1;
+  }
+  50% {
+    transform: rotateY(90deg) scale(0.95);
+    opacity: 0.5;
+  }
+  100% {
+    transform: rotateY(0deg);
+    opacity: 1;
+  }
+}
+
+/* ---------- tab bar & 4. Shared Layout Indicator ---------- */
 .tabbar{
   position:sticky; bottom:0; display:flex; border-top:1px solid var(--border);
   background:var(--surface); padding-bottom:var(--safe-b);
-}
-.tab-indicator{
-  position:absolute; top:-1px; right:0; height:3px; width:0; border-radius:0 0 4px 4px;
-  background:var(--free); z-index:2; pointer-events:none;
-  transition:transform .38s var(--ease-spring), width .38s var(--ease-spring);
-  will-change:transform,width;
+  position: relative;
 }
 .tab{
   flex:1; display:flex; flex-direction:column; align-items:center; gap:3px; padding:9px 4px 8px;
   border:0; background:none; color:var(--text-muted); cursor:pointer;
-  transition:color .25s ease;
+  position: relative; z-index: 1; transition: color 0.25s ease;
 }
-.tab svg{ width:21px; height:21px; stroke:currentColor; fill:none; stroke-width:1.7; transition:transform .38s var(--ease-spring); }
-.tab span{ font-size:11px; font-weight:600; transition:transform .38s var(--ease-spring); }
+.tab svg{ width:21px; height:21px; stroke:currentColor; fill:none; stroke-width:1.7; }
+.tab span{ font-size:11px; font-weight:600; }
 .tab.sel{ color:var(--free); }
-.tab.sel svg{ transform:translateY(-1.5px) scale(1.14); }
-.tab.sel span{ transform:translateY(-.5px); }
-.tab:active svg{ transform:scale(.86); }
 
-/* ---------- entrance animations (Rubber Band + Stagger) ---------- */
-@keyframes rubberIn{
-  0%   { opacity:0; transform:translateY(18px) scale(.93,.86); }
-  55%  { opacity:1; transform:translateY(-3px) scale(1.014,1.05); }
-  78%  { transform:translateY(1.5px) scale(.995,.982); }
-  100% { opacity:1; transform:translateY(0) scale(1,1); }
+/* Shared Layout Indicator Pill */
+.tab-indicator {
+  position: absolute;
+  top: 6px;
+  bottom: calc(5px + var(--safe-b));
+  background: var(--free-soft);
+  border-radius: var(--radius-sm);
+  transition: all 0.35s cubic-bezier(0.34, 1.25, 0.64, 1);
+  z-index: 0;
+  pointer-events: none;
 }
-@keyframes blockIn{
-  0%   { opacity:0; transform:scale(.86); }
-  60%  { opacity:1; transform:scale(1.05); }
-  100% { opacity:1; transform:scale(1); }
-}
-.enter{
-  animation:rubberIn .54s var(--ease-out) backwards;
-  animation-delay:var(--stagger,0ms);
-}
-.block.enter{
-  animation:blockIn .44s var(--ease-out) backwards;
-  animation-delay:var(--stagger,0ms);
-}
-
-/* ---------- view transitions (shared element) ---------- */
-::view-transition-group(course-hero){
-  animation-duration:.42s;
-  animation-timing-function:var(--ease-out);
-}
-::view-transition-old(root),
-::view-transition-new(root){
-  animation-duration:.26s;
-  animation-timing-function:ease;
-}
-body.vt-active .sheet,
-body.vt-active .sheet-backdrop{ transition:none !important; }
 
 @media (min-width:600px){
   .app{ border-inline:1px solid var(--border); }
-}
-
-@media (prefers-reduced-motion: reduce){
-  .enter, .block.enter, .view.active, .empty-state, .room-title, .room-sub{ animation:none !important; }
-  .tab-indicator{ transition:none !important; }
-  *{ scroll-behavior:auto !important; }
 }
 </style>
 </head>
@@ -362,7 +388,7 @@ body.vt-active .sheet-backdrop{ transition:none !important; }
   </main>
 
   <nav class="tabbar" id="tabbar">
-    <span class="tab-indicator" id="tabIndicator"></span>
+    <div class="tab-indicator" id="tabIndicator"></div>
     <button class="tab sel" data-view="search">
       <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3" stroke-linecap="round"/></svg>
       <span>جستجو</span>
@@ -389,10 +415,6 @@ body.vt-active .sheet-backdrop{ transition:none !important; }
 <script>
 (function(){
 "use strict";
-
-/* ================= ابزارهای عمومی ================= */
-var reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-var supportsVT = typeof document.startViewTransition === "function";
 
 /* ================= نرمال‌سازی متن فارسی ================= */
 var FA_DIGITS = "۰۱۲۳۴۵۶۷۸۹", AR_DIGITS = "٠١٢٣٤٥٦٧٨٩";
@@ -422,8 +444,9 @@ function normalizeSearch(str){
 }
 
 /* ================= روزهای هفته ================= */
-var DAY_KEYS   = ["شنبه","یکشنبه","دوشنبه","سه‌شنبه","چهارشنبه","پنجشنبه","جمعه"];
-var DAY_LABEL  = {"شنبه":"شنبه","یکشنبه":"یک‌شنبه","دوشنبه":"دوشنبه","سه‌شنبه":"سه‌شنبه","چهارشنبه":"چهارشنبه","پنجشنبه":"پنج‌شنبه","جمعه":"جمعه"};
+var DAY_KEYS   = ["شنبه","یکشنبه","دوشنبه","سهشنبه","چهارشنبه","پنجشنبه","جمعه"];
+var DAY_LABEL  = {"شنبه":"شنبه","یکشنبه":"یک‌شنبه","دوشنبه":"دوشنبه","سهشنبه":"سه‌شنبه","چهارشنبه":"چهارشنبه","پنجشنبه":"پنج‌شنبه","جمعه":"جمعه"};
+var DAY_SHORT  = {"شنبه":"ش","یکشنبه":"ی","دوشنبه":"د","سهشنبه":"س","چهارشنبه":"چ","پنجشنبه":"پ","جمعه":"ج"};
 function canonDay(raw){
   var n = normalizeSearch(raw);
   for(var i=0;i<DAY_KEYS.length;i++){ if(n === DAY_KEYS[i]) return DAY_KEYS[i]; }
@@ -476,73 +499,46 @@ SESSIONS.forEach(function(s){ TIME_SET[s.start]=1; TIME_SET[s.end]=1; });
 var TIME_MARKS = Object.keys(TIME_SET).map(Number).sort(function(a,b){return a-b;});
 if(TIME_MARKS.length===0){ for(var h=8; h<=20; h++) TIME_MARKS.push(h*60); }
 
-/* ================= سوییچ تب‌ها + Shared Layout ================= */
-var tabs = Array.prototype.slice.call(document.querySelectorAll(".tab"));
-var views = {
-  search: document.getElementById("view-search"),
-  room:   document.getElementById("view-room"),
-  free:   document.getElementById("view-free")
-};
-var tabbarEl = document.getElementById("tabbar");
+/* ================= سوییچ تب‌ها (Shared Layout Effect) ================= */
+var tabs = document.querySelectorAll(".tab");
+var views = { search: document.getElementById("view-search"), room: document.getElementById("view-room"), free: document.getElementById("view-free") };
 var tabIndicator = document.getElementById("tabIndicator");
-var currentTab = "search";
 
-function moveIndicator(btn, animate){
-  if(!btn || !tabIndicator) return;
-  var barRect = tabbarEl.getBoundingClientRect();
-  var r = btn.getBoundingClientRect();
-  if(!r.width) return;
-  var w = r.width * 0.46;
-  var x = (r.left - barRect.left) + (r.width - w) / 2;
-  if(animate === false) tabIndicator.style.transition = "none";
-  tabIndicator.style.width = w + "px";
-  tabIndicator.style.transform = "translateX(" + x + "px)";
-  if(animate === false){
-    void tabIndicator.offsetWidth;
-    tabIndicator.style.transition = "";
-  }
-}
-
-function tabIndex(name){
-  for(var i=0;i<tabs.length;i++){ if(tabs[i].dataset.view === name) return i; }
-  return 0;
+function updateTabIndicator(activeTabEl){
+  if(!activeTabEl) return;
+  var navRect = document.getElementById("tabbar").getBoundingClientRect();
+  var tabRect = activeTabEl.getBoundingClientRect();
+  var left = tabRect.left - navRect.left;
+  var width = tabRect.width;
+  
+  tabIndicator.style.left = left + "px";
+  tabIndicator.style.width = width + "px";
 }
 
 function activateTab(name){
-  if(name === currentTab && views[name].classList.contains("active")){
-    moveIndicator(tabs[tabIndex(name)], true);
-    return;
-  }
-  var idx = tabIndex(name), prevIdx = tabIndex(currentTab);
-  var dir = idx > prevIdx ? 1 : -1;
-  currentTab = name;
-
-  tabs.forEach(function(b){ b.classList.toggle("sel", b.dataset.view === name); });
-
-  Object.keys(views).forEach(function(k){
-    var el = views[k];
-    if(k === name){
-      el.style.setProperty("--dir", dir);
-      el.classList.remove("active");
-      void el.offsetWidth;          // ری‌استارت انیمیشن ورود
-      el.classList.add("active");
-    } else {
-      el.classList.remove("active");
-    }
+  var targetTab = null;
+  tabs.forEach(function(b){ 
+    var isSelected = b.dataset.view === name;
+    b.classList.toggle("sel", isSelected);
+    if(isSelected) targetTab = b;
   });
-
-  moveIndicator(tabs[idx], true);
+  Object.keys(views).forEach(function(k){ views[k].classList.toggle("active", k === name); });
+  if(targetTab) updateTabIndicator(targetTab);
 }
 
 tabs.forEach(function(btn){
   btn.addEventListener("click", function(){ activateTab(btn.dataset.view); });
 });
 
-function syncIndicator(){ moveIndicator(document.querySelector(".tab.sel"), false); }
-requestAnimationFrame(syncIndicator);
-window.addEventListener("load", function(){ setTimeout(syncIndicator, 80); });
-window.addEventListener("resize", syncIndicator);
-if(document.fonts && document.fonts.ready){ document.fonts.ready.then(syncIndicator); }
+// تنظیم موقعیت اولیه اندیکاتور
+window.addEventListener("load", function(){
+  var activeTab = document.querySelector(".tab.sel");
+  if(activeTab) updateTabIndicator(activeTab);
+});
+window.addEventListener("resize", function(){
+  var activeTab = document.querySelector(".tab.sel");
+  if(activeTab) updateTabIndicator(activeTab);
+});
 
 /* ================= تم روشن/تیره ================= */
 var themeBtn = document.getElementById("themeBtn");
@@ -558,94 +554,65 @@ themeBtn.addEventListener("click", function(){
   try{ localStorage.setItem("theme", next); }catch(e){}
 });
 
-/* ================= بات‌شیت جزئیات + Shared Element Transition ================= */
-var sheet = document.getElementById("sheet");
-var backdrop = document.getElementById("sheetBackdrop");
-var sheetContent = document.getElementById("sheetContent");
-var mergedState = null;
-var currentSourceEl = null;
-var HERO_NAME = "course-hero";
+/* ================= بات‌شیت جزئیات (Shared Element Transition) ================= */
+var sheet = document.getElementById("sheet"), backdrop = document.getElementById("sheetBackdrop"), sheetContent = document.getElementById("sheetContent");
+var mergedState = null; 
 
-function showSheetEl(){ sheet.classList.add("show"); backdrop.classList.add("show"); }
-
-// باز کردن شیت. اگر sourceEl بدیم، از Shared Element Transition استفاده می‌شه.
-function openSheet(html, sourceEl){
+function openSheetWithSharedElement(originEl, html){
   mergedState = null;
-  currentSourceEl = sourceEl || null;
-
-  if(supportsVT && sourceEl && !reduceMotion && sourceEl.isConnected){
-    var el = sourceEl;
-    el.style.viewTransitionName = HERO_NAME;
-    var vt;
-    try{
-      vt = document.startViewTransition(function(){
-        el.style.viewTransitionName = "";
-        sheetContent.innerHTML = html;
-        var h2 = sheetContent.querySelector("h2");
-        if(h2) h2.style.viewTransitionName = HERO_NAME;
-        document.body.classList.add("vt-active");
-        showSheetEl();
-      });
-    }catch(err){
-      el.style.viewTransitionName = "";
-      sheetContent.innerHTML = html;
-      showSheetEl();
-      return;
-    }
-    vt.finished.finally(function(){
-      var h2 = sheetContent.querySelector("h2");
-      if(h2) h2.style.viewTransitionName = "";
-      document.body.classList.remove("vt-active");
-    });
+  sheetContent.innerHTML = html;
+  
+  if(!originEl) {
+    sheet.classList.add("show");
+    backdrop.classList.add("show");
     return;
   }
 
-  sheetContent.innerHTML = html;
-  showSheetEl();
+  var rect = originEl.getBoundingClientRect();
+  
+  // تنظیم حالت اولیه برای افکت انیمیشن تکثیر/بزرگنمایی (Shared Element)
+  sheet.classList.add("shared-animating");
+  sheet.style.top = rect.top + "px";
+  sheet.style.left = rect.left + "px";
+  sheet.style.width = rect.width + "px";
+  sheet.style.height = rect.height + "px";
+  sheet.style.borderRadius = getComputedStyle(originEl).borderRadius || "14px";
+  sheet.style.transform = "none";
+  
+  backdrop.classList.add("show");
+  sheet.classList.add("show");
+
+  requestAnimationFrame(function(){
+    requestAnimationFrame(function(){
+      sheet.style.top = "";
+      sheet.style.left = "0px";
+      sheet.style.width = "100%";
+      sheet.style.height = "";
+      sheet.style.borderRadius = "18px 18px 0 0";
+      
+      setTimeout(function(){
+        sheet.classList.remove("shared-animating");
+      }, 380);
+    });
+  });
 }
 
-function closeSheet(){
-  var el = currentSourceEl;
-  mergedState = null;
-  currentSourceEl = null;
-
-  if(supportsVT && el && !reduceMotion && el.isConnected){
-    var r = el.getBoundingClientRect();
-    var onScreen = r.bottom > 0 && r.top < window.innerHeight;
-    if(onScreen){
-      var vt;
-      try{
-        vt = document.startViewTransition(function(){
-          var h2 = sheetContent.querySelector("h2");
-          if(h2) h2.style.viewTransitionName = "";
-          document.body.classList.add("vt-active");
-          sheet.classList.remove("show");
-          backdrop.classList.remove("show");
-          el.style.viewTransitionName = HERO_NAME;
-        });
-      }catch(err){
-        sheet.classList.remove("show");
-        backdrop.classList.remove("show");
-        return;
-      }
-      vt.finished.finally(function(){
-        el.style.viewTransitionName = "";
-        document.body.classList.remove("vt-active");
-        sheetContent.innerHTML = "";
-      });
-      return;
-    }
-  }
-
-  sheet.classList.remove("show");
-  backdrop.classList.remove("show");
+function openSheet(html, originEl){
+  openSheetWithSharedElement(originEl, html);
 }
 
+function closeSheet(){ 
+  sheet.classList.remove("show"); 
+  backdrop.classList.remove("show"); 
+  mergedState = null; 
+}
 document.getElementById("sheetClose").addEventListener("click", closeSheet);
 backdrop.addEventListener("click", closeSheet);
 
 function courseDetailHTML(course){
   var cap = course["ظرفیت"], reg = course["ثبت نام شده"];
+  var pct = cap ? Math.min(100, Math.round((reg/cap)*100)) : 0;
+  var full = cap!=null && reg!=null && reg>=cap;
   var html = "";
   html += "<h2>"+escapeHTML(course["نام درس"]||"")+"</h2>";
   html += "<div class='sub'>"+escapeHTML(course["نام استاد"]||"")+" · "+escapeHTML(course["گروه آموزشي"]||"")+"</div>";
@@ -667,37 +634,63 @@ function courseDetailHTML(course){
 function infoBox(k,v){ return "<div class='info-box'><div class='k'>"+k+"</div><div class='v'>"+escapeHTML(String(v))+"</div></div>"; }
 function escapeHTML(s){ return String(s).replace(/[&<>"']/g, function(c){ return {"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]; }); }
 
-function openMergedSheet(idxs, sourceEl){
+/* ================= سوییچ بین چند درس هم‌زمان (Book Flip Transition) ================= */
+function openMergedSheet(idxs, originEl){
   mergedState = { idxs: idxs, pos: 0 };
-  // برای درس‌های هم‌زمان، کارتِ مبدأ به عنوان shared element استفاده می‌شه
-  openSheet(mergedHTML(), sourceEl);
-  bindMergedNav();
+  var c = COURSES[idxs[0]];
+  var nav = "<div class='carousel-nav'>"
+    + "<button class='car-btn' id='carPrev' disabled aria-label='درس قبلی'>›</button>"
+    + "<span class='car-count'>۱ از "+idxs.length+" درس هم‌زمان</span>"
+    + "<button class='car-btn' id='carNext'"+(idxs.length===1?" disabled":"")+" aria-label='درس بعدی'>‹</button>"
+    + "</div>";
+  var html = nav + "<div class='carousel-container'><div class='car-slide' id='carSlide'>" + courseDetailHTML(c) + "</div></div>";
+  
+  openSheetWithSharedElement(originEl, html);
+  bindMergedEvents();
 }
-function mergedHTML(){
-  if(!mergedState) return "";
+
+function renderMergedCourse(direction){
+  if(!mergedState) return;
   var idxs = mergedState.idxs, pos = mergedState.pos;
   var c = COURSES[idxs[pos]];
-  var nav = "<div class='carousel-nav'>"
-    + "<button class='car-btn' id='carPrev'"+(pos===0?" disabled":"")+" aria-label='درس قبلی'>›</button>"
-    + "<span class='car-count'>"+(pos+1)+" از "+idxs.length+" درس هم‌زمان</span>"
-    + "<button class='car-btn' id='carNext'"+(pos===idxs.length-1?" disabled":"")+" aria-label='درس بعدی'>‹</button>"
-    + "</div>";
-  return nav + "<div class='car-slide'>" + courseDetailHTML(c) + "</div>";
+  
+  var carSlide = document.getElementById("carSlide");
+  if(!carSlide) return;
+
+  var animClass = direction === "next" ? "flip-next" : "flip-prev";
+  carSlide.className = "car-slide " + animClass;
+
+  setTimeout(function(){
+    carSlide.innerHTML = courseDetailHTML(c);
+    var countEl = sheetContent.querySelector(".car-count");
+    if(countEl) countEl.textContent = (pos+1) + " از " + idxs.length + " درس هم‌زمان";
+    
+    var prevBtn = document.getElementById("carPrev");
+    var nextBtn = document.getElementById("carNext");
+    if(prevBtn) prevBtn.disabled = (pos === 0);
+    if(nextBtn) nextBtn.disabled = (pos === idxs.length - 1);
+  }, 225);
+
+  setTimeout(function(){
+    carSlide.className = "car-slide";
+  }, 450);
 }
-function bindMergedNav(){
+
+function bindMergedEvents(){
   var prevBtn = document.getElementById("carPrev"), nextBtn = document.getElementById("carNext");
   if(prevBtn) prevBtn.addEventListener("click", function(){ moveMerged(-1); });
   if(nextBtn) nextBtn.addEventListener("click", function(){ moveMerged(1); });
 }
+
 function moveMerged(delta){
   if(!mergedState) return;
   var next = mergedState.pos + delta;
   if(next<0 || next>=mergedState.idxs.length) return;
   mergedState.pos = next;
-  sheetContent.innerHTML = mergedHTML();
-  bindMergedNav();
+  renderMergedCourse(delta > 0 ? "next" : "prev");
 }
-// سوایپ روی بات‌شیت برای رفتن به درس هم‌زمان بعدی/قبلی
+
+// سوایپ روی بات‌شیت
 var touchStartX = null;
 sheet.addEventListener("touchstart", function(e){ touchStartX = e.touches[0].clientX; }, {passive:true});
 sheet.addEventListener("touchend", function(e){
@@ -707,31 +700,19 @@ sheet.addEventListener("touchend", function(e){
   if(Math.abs(dx) < 40) return;
   if(dx < 0) moveMerged(1); else moveMerged(-1);
 }, {passive:true});
-// کلیک روی کارت‌های داخل خودِ بات‌شیت
+
 sheetContent.addEventListener("click", function(e){
   var btn = e.target.closest(".course-card"); if(!btn) return;
-  openSheet(courseDetailHTML(COURSES[Number(btn.dataset.idx)]));
+  openSheet(courseDetailHTML(COURSES[Number(btn.dataset.idx)]), btn);
 });
 
-/* ================= تب جستجو (Rubber Band + Stagger) ================= */
-var searchInput = document.getElementById("searchInput");
-var searchResults = document.getElementById("searchResults");
-var searchCount = document.getElementById("searchCount");
+/* ================= تب جستجو ================= */
+var searchInput = document.getElementById("searchInput"), searchResults = document.getElementById("searchResults"), searchCount = document.getElementById("searchCount");
 var searchTimer = null;
 searchInput.addEventListener("input", function(){
   clearTimeout(searchTimer);
   searchTimer = setTimeout(runSearch, 150);
 });
-
-var STAGGER_STEP = 34;      // فاصله‌ی بین آیتم‌ها
-var STAGGER_MAX_ITEMS = 18; // بعد از این تعداد، انیمیشن ورود اجرا نمی‌شه
-var STAGGER_CAP = 520;      // سقف تاخیر
-
-function staggerVars(i){
-  var delay = Math.min(i * STAGGER_STEP, STAGGER_CAP);
-  return " style='--stagger:" + delay + "ms'";
-}
-
 function runSearch(){
   var tokens = normalizePersian(searchInput.value).split(" ").filter(Boolean);
   if(tokens.length===0){ searchResults.innerHTML=""; searchCount.textContent=""; return; }
@@ -753,8 +734,7 @@ function runSearch(){
     var cap = c["ظرفیت"], reg = c["ثبت نام شده"];
     var full = cap!=null && reg!=null && reg>=cap;
     var firstLine = (c["زمان و مكان ارائه متن"]||"").split("\n")[0];
-    var enterCls = i < STAGGER_MAX_ITEMS ? " enter" : "";
-    html += "<button class='course-card"+enterCls+"'"+staggerVars(i)+" data-idx='"+idx+"'>"
+    html += "<button class='course-card' style='--stagger-index:"+i+";' data-idx='"+idx+"'>"
       + "<div class='title'>"+escapeHTML(c["نام درس"]||"")+"</div>"
       + "<div class='meta'>"+escapeHTML(c["نام استاد"]||"")+"</div>"
       + "<div class='row2'>"
@@ -771,10 +751,8 @@ searchResults.addEventListener("click", function(e){
 });
 
 /* ================= تب وضعیت کلاس ================= */
-var roomInput = document.getElementById("roomInput");
-var roomSuggest = document.getElementById("roomSuggest");
-var roomEmpty = document.getElementById("roomEmpty");
-var roomResult = document.getElementById("roomResult");
+var roomInput = document.getElementById("roomInput"), roomSuggest = document.getElementById("roomSuggest");
+var roomEmpty = document.getElementById("roomEmpty"), roomResult = document.getElementById("roomResult");
 roomInput.addEventListener("input", function(){
   var q = normalizeSearch(roomInput.value);
   if(!q){ roomSuggest.classList.remove("show"); return; }
@@ -821,14 +799,12 @@ function selectRoom(place){
   html += "<div class='grid-wrap' id='gridWrap'><div class='sched' style='--track-w:"+trackW+"px; --hrs:"+hrs+";'>";
 
   html += "<div class='sched-row sched-head'><div class='day-lbl'></div><div class='track'>";
-  for(var hh=minStart; hh<maxEnd; hh+=60){
-    html += "<div class='hour-lbl' style='right:"+pct(hh-minStart)+";'>"+fmtMin(hh)+"</div>";
+  for(var h=minStart; h<maxEnd; h+=60){
+    html += "<div class='hour-lbl' style='right:"+pct(h-minStart)+";'>"+fmtMin(h)+"</div>";
   }
   html += "</div></div>";
 
-  var blockIndex = 0;
-
-  daysShown.forEach(function(d, dayIdx){
+  daysShown.forEach(function(d){
     html += "<div class='sched-row'><div class='day-lbl'>"+DAY_LABEL[d]+"</div><div class='track'>";
     var groups = {}, order = [];
     sessions.filter(function(s){return s.day===d;}).forEach(function(s){
@@ -841,20 +817,15 @@ function selectRoom(place){
       var pos = "right:calc("+pct(s0.start-minStart)+" + 1px); width:calc("+pct(s0.end-s0.start)+" - 2px);";
       var idxs = group.map(function(s){return s.courseIdx;}).join(",");
       var time = fmtMin(s0.start)+"–"+fmtMin(s0.end);
-      var delay = Math.min(blockIndex * 30, 420);
-      var anim = " block-enter";
-      var styleExtra = ";--stagger:" + delay + "ms";
-      blockIndex++;
-
       if(group.length === 1){
         var c = COURSES[s0.courseIdx];
-        html += "<button class='block enter' style='"+pos+styleExtra+"' data-idxs='"+idxs+"'>"
+        html += "<button class='block' style='"+pos+"' data-idxs='"+idxs+"'>"
               + "<div class='b-title'>"+escapeHTML(c["نام درس"]||"")+"</div>"
               + "<div class='b-sub'>"+time+"</div>"
               + "</button>";
       } else {
         var titles = group.map(function(s){ return COURSES[s.courseIdx]["نام درس"]||""; }).join(" / ");
-        html += "<button class='block enter' style='"+pos+styleExtra+"' data-idxs='"+idxs+"'>"
+        html += "<button class='block' style='"+pos+"' data-idxs='"+idxs+"'>"
               + "<span class='b-count'>"+group.length+"</span>"
               + "<div class='b-title'>"+escapeHTML(titles)+"</div>"
               + "<div class='b-sub'>"+time+"</div>"
@@ -907,13 +878,9 @@ function isNegativeRoom(place){
   return /-$/.test(trimmed);
 }
 
-var placeItemIndex = 0;
 function placeItemHTML(p){
-  var i = placeItemIndex++;
-  var enterCls = i < 24 ? " enter" : "";
-  return "<button type='button' class='place-item"+enterCls+"'"+staggerVars(i)+" data-place='"+escapeHTML(p)+"'><span class='name'>"+escapeHTML(p)+"</span><span class='dot'></span></button>";
+  return "<button type='button' class='place-item' data-place='"+escapeHTML(p)+"'><span class='name'>"+escapeHTML(p)+"</span><span class='dot'></span></button>";
 }
-
 document.getElementById("freeResultWrap").addEventListener("click", function(e){
   var btn = e.target.closest(".place-item"); if(!btn) return;
   var place = btn.dataset.place;
@@ -952,8 +919,6 @@ function showFreeRooms(){
     if(a==="other") return 1; if(b==="other") return -1;
     return Number(b)-Number(a);
   });
-
-  placeItemIndex = 0;
   var html = "<div class='result-count'>"+free.length+" کلاس خالی از "+ALL_PLACES.length+" مورد</div>";
   order.forEach(function(key){
     var title = key==="other" ? "سایر مکان‌ها" : "کلاس‌های "+key+" تا "+(Number(key)+99);
@@ -969,7 +934,6 @@ function showFreeRooms(){
     html += "</div></div>";
   }
   wrap.innerHTML = html;
-
   var negToggle = document.getElementById("negToggle");
   if(negToggle){
     negToggle.addEventListener("click", function(){
@@ -977,15 +941,6 @@ function showFreeRooms(){
       var isOpen = list.style.display !== "none";
       list.style.display = isOpen ? "none" : "flex";
       negToggle.querySelector(".neg-chevron").textContent = isOpen ? "▾" : "▴";
-      if(!isOpen){
-        // وقتی باز می‌شه، آیتم‌ها با استگر ظاهر بشن
-        Array.prototype.forEach.call(list.children, function(el, i){
-          el.classList.remove("enter");
-          el.style.setProperty("--stagger", Math.min(i*28, 300) + "ms");
-          void el.offsetWidth;
-          el.classList.add("enter");
-        });
-      }
     });
   }
 }
@@ -1024,3 +979,4 @@ if("serviceWorker" in navigator){
 </script>
 </body>
 </html>
+
