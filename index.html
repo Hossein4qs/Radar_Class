@@ -161,6 +161,8 @@ main{ flex:1; padding:2px 14px 18px; }
 .go-btn:active{ opacity:.85; }
 .place-group{ margin-top:16px; }
 .place-group-title{ font-size:12.5px; font-weight:700; color:var(--text-muted); margin:0 2px 8px; }
+button.place-group-title{ border:0; background:none; width:100%; padding:0; font-family:inherit; cursor:pointer; display:flex; align-items:center; justify-content:space-between; }
+.neg-chevron{ font-size:11px; }
 .place-list{ display:flex; flex-direction:column; gap:8px; }
 .place-item{
   display:flex; align-items:center; justify-content:space-between; background:var(--surface);
@@ -192,6 +194,15 @@ main{ flex:1; padding:2px 14px 18px; }
 .sheet .block-title{ font-size:13px; font-weight:700; margin:14px 0 6px; color:var(--text-muted); }
 .sheet pre{ white-space:pre-wrap; font-family:inherit; font-size:13.5px; background:var(--surface-2); border-radius:var(--radius-sm); padding:10px 12px; margin:0; line-height:1.8; }
 .sheet-close{ position:absolute; left:16px; top:16px; width:32px; height:32px; border-radius:50%; border:1px solid var(--border); background:var(--surface-2); display:flex; align-items:center; justify-content:center; cursor:pointer; }
+.carousel-nav{ display:flex; align-items:center; justify-content:space-between; margin:0 0 14px; padding-inline-end:40px; }
+.car-btn{
+  width:34px; height:34px; border-radius:50%; border:1px solid var(--border); background:var(--surface-2);
+  font-size:18px; line-height:1; cursor:pointer; display:flex; align-items:center; justify-content:center; flex:none;
+}
+.car-btn:disabled{ opacity:.3; cursor:default; }
+.car-count{ font-size:12.5px; color:var(--text-muted); font-weight:600; }
+.car-slide{ animation:carIn .16s ease; }
+@keyframes carIn{ from{ opacity:0; transform:translateX(8px);} to{ opacity:1; transform:translateX(0);} }
 
 /* ---------- tab bar ---------- */
 .tabbar{
@@ -341,7 +352,9 @@ var SESSIONS = [];
 var placeSet = {};
 
 COURSES.forEach(function(course, idx){
-  course.__search = normalizeSearch((course["نام درس"]||"") + " " + (course["نام استاد"]||""));
+  // فاصله‌ها رو نگه می‌داریم (بر خلاف normalizeSearch) چون قراره کلمه‌به‌کلمه چک کنیم
+  // تا «رضایی احمد» و «احمد رضایی» هر دو پیدا بشن
+  course.__search = normalizePersian((course["نام درس"]||"") + " " + (course["نام استاد"]||""));
   var sessions = course["زمان و مكان ارائه"] || [];
   sessions.forEach(function(s){
     var day = canonDay(s["روز"]);
@@ -395,11 +408,14 @@ themeBtn.addEventListener("click", function(){
 
 /* ================= بات‌شیت جزئیات ================= */
 var sheet = document.getElementById("sheet"), backdrop = document.getElementById("sheetBackdrop"), sheetContent = document.getElementById("sheetContent");
+var mergedState = null; // { idxs:[...], pos:0 } وقتی چند درس هم‌زمان با کشو نمایش داده می‌شن
+function showSheetEl(){ sheet.classList.add("show"); backdrop.classList.add("show"); }
 function openSheet(html){
+  mergedState = null;
   sheetContent.innerHTML = html;
-  sheet.classList.add("show"); backdrop.classList.add("show");
+  showSheetEl();
 }
-function closeSheet(){ sheet.classList.remove("show"); backdrop.classList.remove("show"); }
+function closeSheet(){ sheet.classList.remove("show"); backdrop.classList.remove("show"); mergedState = null; }
 document.getElementById("sheetClose").addEventListener("click", closeSheet);
 backdrop.addEventListener("click", closeSheet);
 
@@ -428,26 +444,45 @@ function courseDetailHTML(course){
 function infoBox(k,v){ return "<div class='info-box'><div class='k'>"+k+"</div><div class='v'>"+escapeHTML(String(v))+"</div></div>"; }
 function escapeHTML(s){ return String(s).replace(/[&<>"']/g, function(c){ return {"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]; }); }
 
-// چند درس که سر یه ساعت و یه کلاس هستن (معمولاً چون برای رشته‌های مختلف
-// با ظرفیت/نام جدا توی دیتابیس ثبت شدن) رو با هم توی یه لیست نشون می‌ده
+// چند درس که سر یه ساعت و یه کلاس هستن (معمولاً چون برای رشته‌های مختلف با
+// ظرفیت/نام جدا توی دیتابیس ثبت شدن) رو به‌صورت کشویی (سوایپ یا دکمه) نشون می‌ده
 function openMergedSheet(idxs){
-  var html = "<h2>چند درس هم‌زمان در این کلاس</h2>";
-  html += "<div class='sub'>احتمالاً همون یه کلاسه که برای رشته‌های مختلف جدا ثبت شده — روی هرکدوم بزن برای جزئیات.</div>";
-  html += "<div class='card-list'>";
-  idxs.forEach(function(i){
-    var c = COURSES[i];
-    var cap = c["ظرفیت"], reg = c["ثبت نام شده"];
-    var full = cap!=null && reg!=null && reg>=cap;
-    html += "<button class='course-card' data-idx='"+i+"'>"
-      + "<div class='title'>"+escapeHTML(c["نام درس"]||"")+"</div>"
-      + "<div class='meta'>"+escapeHTML(c["نام استاد"]||"")+" · "+escapeHTML(c["گروه آموزشي"]||"")+"</div>"
-      + "<div class='row2'><span class='time'></span><span class='badge "+(full?"busy":"free")+"'>"+(full?"تکمیل":((cap!=null&&reg!=null)?(cap-reg)+" جا خالی":""))+"</span></div>"
-    + "</button>";
-  });
-  html += "</div>";
-  openSheet(html);
+  mergedState = { idxs: idxs, pos: 0 };
+  renderMergedCourse();
+  showSheetEl();
 }
-// کلیک روی کارت‌های داخل خودِ بات‌شیت (مثلاً از لیست ادغام‌شده) هم جزئیات کامل رو باز کنه
+function renderMergedCourse(){
+  if(!mergedState) return;
+  var idxs = mergedState.idxs, pos = mergedState.pos;
+  var c = COURSES[idxs[pos]];
+  var nav = "<div class='carousel-nav'>"
+    + "<button class='car-btn' id='carPrev'"+(pos===0?" disabled":"")+" aria-label='درس قبلی'>›</button>"
+    + "<span class='car-count'>"+(pos+1)+" از "+idxs.length+" درس هم‌زمان</span>"
+    + "<button class='car-btn' id='carNext'"+(pos===idxs.length-1?" disabled":"")+" aria-label='درس بعدی'>‹</button>"
+    + "</div>";
+  sheetContent.innerHTML = nav + "<div class='car-slide'>" + courseDetailHTML(c) + "</div>";
+  var prevBtn = document.getElementById("carPrev"), nextBtn = document.getElementById("carNext");
+  if(prevBtn) prevBtn.addEventListener("click", function(){ moveMerged(-1); });
+  if(nextBtn) nextBtn.addEventListener("click", function(){ moveMerged(1); });
+}
+function moveMerged(delta){
+  if(!mergedState) return;
+  var next = mergedState.pos + delta;
+  if(next<0 || next>=mergedState.idxs.length) return;
+  mergedState.pos = next;
+  renderMergedCourse();
+}
+// سوایپ روی بات‌شیت برای رفتن به درس هم‌زمان بعدی/قبلی
+var touchStartX = null;
+sheet.addEventListener("touchstart", function(e){ touchStartX = e.touches[0].clientX; }, {passive:true});
+sheet.addEventListener("touchend", function(e){
+  if(touchStartX===null || !mergedState){ touchStartX=null; return; }
+  var dx = e.changedTouches[0].clientX - touchStartX;
+  touchStartX = null;
+  if(Math.abs(dx) < 40) return;
+  if(dx < 0) moveMerged(1); else moveMerged(-1);
+}, {passive:true});
+// کلیک روی کارت‌های داخل خودِ بات‌شیت (مثلاً از نتایج جستجو که داخل شیت باز شدن) هم جزئیات کامل رو باز کنه
 sheetContent.addEventListener("click", function(e){
   var btn = e.target.closest(".course-card"); if(!btn) return;
   openSheet(courseDetailHTML(COURSES[Number(btn.dataset.idx)]));
@@ -461,11 +496,14 @@ searchInput.addEventListener("input", function(){
   searchTimer = setTimeout(runSearch, 150);
 });
 function runSearch(){
-  var q = normalizeSearch(searchInput.value);
-  if(!q){ searchResults.innerHTML=""; searchCount.textContent=""; return; }
+  var tokens = normalizePersian(searchInput.value).split(" ").filter(Boolean);
+  if(tokens.length===0){ searchResults.innerHTML=""; searchCount.textContent=""; return; }
   var matches = [];
   for(var i=0;i<COURSES.length;i++){
-    if(COURSES[i].__search.indexOf(q) > -1){ matches.push(i); if(matches.length>=150) break; }
+    var hay = COURSES[i].__search;
+    var ok = true;
+    for(var t=0;t<tokens.length;t++){ if(hay.indexOf(tokens[t]) === -1){ ok=false; break; } }
+    if(ok){ matches.push(i); if(matches.length>=150) break; }
   }
   searchCount.textContent = matches.length ? (matches.length+" نتیجه"+(matches.length>=150?" (۱۵۰ مورد اول)":"")) : "";
   if(matches.length===0){
@@ -617,11 +655,16 @@ TIME_MARKS.forEach(function(m){
 freeStart.selectedIndex = 0;
 freeEnd.selectedIndex = Math.min(TIME_MARKS.length-1, 1);
 
-// عدد صدگانِ شماره‌ی کلاس رو برمی‌گردونه (مثلاً 609 -> 600) تا بشه بر اساس طبقه گروه‌بندی کرد
-function hundredBucket(place){
+// عدد کلاس رو استخراج می‌کنه (بدون علامت)
+function roomNumber(place){
   var m = place.match(/\d+/);
-  if(!m) return null;
-  return Math.floor(parseInt(m[0],10)/100)*100;
+  return m ? parseInt(m[0],10) : null;
+}
+// کلاس‌های «منفی» (زیرزمین) توی دیتا با یه خط تیره درست قبل از پرانتز/کروشه‌ی
+// بسته مشخص می‌شن، مثلاً «(كلاس 504-)» — با «504» معمولی اشتباه گرفته نشه
+function isNegativeRoom(place){
+  var trimmed = place.trim().replace(/[)\]]+$/,"").trim();
+  return /-$/.test(trimmed);
 }
 
 function showFreeRooms(){
@@ -638,16 +681,20 @@ function showFreeRooms(){
     wrap.innerHTML = "<div class='empty-state'>توی این بازه هیچ کلاسی خالی نیست.</div>";
     return;
   }
-  var buckets = {}, order = [];
+  var buckets = {}, order = [], negativeList = [];
   free.forEach(function(p){
-    var b = hundredBucket(p);
-    var key = b===null ? "other" : String(b);
+    if(isNegativeRoom(p)){ negativeList.push(p); return; }
+    var num = roomNumber(p);
+    var key = num===null ? "other" : String(Math.floor(num/100)*100);
     if(!buckets[key]){ buckets[key]=[]; order.push(key); }
     buckets[key].push(p);
   });
+  // از بزرگ به کوچیک: هم ترتیب دسته‌ها، هم مکان‌ها داخل هر دسته
+  order.forEach(function(key){ buckets[key].sort(function(a,b){ return (roomNumber(b)||0)-(roomNumber(a)||0); }); });
+  negativeList.sort(function(a,b){ return (roomNumber(b)||0)-(roomNumber(a)||0); });
   order.sort(function(a,b){
     if(a==="other") return 1; if(b==="other") return -1;
-    return Number(a)-Number(b);
+    return Number(b)-Number(a);
   });
   var html = "<div class='result-count'>"+free.length+" کلاس خالی از "+ALL_PLACES.length+" مورد</div>";
   order.forEach(function(key){
@@ -656,7 +703,23 @@ function showFreeRooms(){
     buckets[key].forEach(function(p){ html += "<div class='place-item'><span class='name'>"+escapeHTML(p)+"</span><span class='dot'></span></div>"; });
     html += "</div></div>";
   });
+  if(negativeList.length){
+    html += "<div class='place-group'>"
+      + "<button type='button' class='place-group-title neg-toggle' id='negToggle'>کلاس‌های منفی ("+negativeList.length+")<span class='neg-chevron'>▾</span></button>"
+      + "<div class='place-list' id='negList' style='display:none;'>";
+    negativeList.forEach(function(p){ html += "<div class='place-item'><span class='name'>"+escapeHTML(p)+"</span><span class='dot'></span></div>"; });
+    html += "</div></div>";
+  }
   wrap.innerHTML = html;
+  var negToggle = document.getElementById("negToggle");
+  if(negToggle){
+    negToggle.addEventListener("click", function(){
+      var list = document.getElementById("negList");
+      var isOpen = list.style.display !== "none";
+      list.style.display = isOpen ? "none" : "flex";
+      negToggle.querySelector(".neg-chevron").textContent = isOpen ? "▾" : "▴";
+    });
+  }
 }
 document.getElementById("freeGoBtn").addEventListener("click", showFreeRooms);
 
