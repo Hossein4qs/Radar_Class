@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#12181a">
 <meta name="description" content="جستجوی دروس دانشگاه، بررسی وضعیت کلاس‌ها و پیدا کردن کلاس خالی">
-<title>USC Radar</title>
+<title>رادار علموف</title>
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="icons/icon-192.png">
 <link rel="icon" href="icons/icon-192.png">
@@ -47,7 +47,7 @@ body{
   padding-top:var(--safe-t);
 }
 button,input,select{ font-family:inherit; font-size:inherit; color:inherit; }
-.app{ max-width:560px; margin:0 auto; min-height:100%; display:flex; flex-direction:column; }
+.app{ max-width:560px; margin:0 auto; min-height:100%; min-height:100dvh; display:flex; flex-direction:column; }
 
 /* ---------- top bar ---------- */
 .topbar{
@@ -63,7 +63,7 @@ button,input,select{ font-family:inherit; font-size:inherit; color:inherit; }
 .theme-btn svg{ width:18px; height:18px; stroke:var(--text-muted); }
 
 /* ---------- views ---------- */
-main{ flex:1; padding:2px 14px 18px; }
+main{ flex:1; padding:2px 14px calc(84px + var(--safe-b)); }
 .view{ display:none; }
 .view.active{ display:block; animation:fade .18s ease; }
 @keyframes fade{ from{opacity:0; transform:translateY(4px);} to{opacity:1; transform:translateY(0);} }
@@ -327,7 +327,8 @@ button.place-group-title{ border:0; background:none; width:100%; padding:0; font
 
 /* ---------- tab bar ---------- */
 .tabbar{
-  position:sticky; bottom:0; z-index:10; display:flex; border-top:1px solid var(--border);
+  position:fixed; bottom:0; left:0; right:0; margin-inline:auto; width:min(100%,560px);
+  z-index:10; display:flex; border-top:1px solid var(--border);
   background:var(--surface); padding-bottom:var(--safe-b);
 }
 /* ردیاب لایه‌ی مشترک (Shared Layout): یه پیل که بین تب‌ها می‌لغزه */
@@ -1086,7 +1087,7 @@ function setFreeDay(d){
   selectedFreeDay = d;
   freeDayChips.querySelectorAll(".day-chip").forEach(function(c){ c.classList.toggle("sel", c.dataset.day===d); });
 }
-DAY_KEYS.slice(0,7).forEach(function(d){
+DAY_KEYS.slice(0,6).forEach(function(d){
   var b = document.createElement("button");
   b.className = "day-chip" + (d===selectedFreeDay ? " sel":"");
   b.textContent = DAY_LABEL[d];
@@ -1196,6 +1197,7 @@ document.getElementById("freeGoBtn").addEventListener("click", showFreeRooms);
 document.getElementById("freeNowBtn").addEventListener("click", function(){
   var now = new Date();
   var ourDay = DAY_KEYS[(now.getDay()+1)%7];
+  if(ourDay === "جمعه") ourDay = DAY_KEYS[0]; // جمعه توی این تب نیست → شنبه
   setFreeDay(ourDay);
   var nowMin = now.getHours()*60 + now.getMinutes();
   var idx = TIME_MARKS.findIndex(function(m){ return m > nowMin; });
