@@ -276,6 +276,8 @@ button.place-group-title{ border:0; background:none; width:100%; padding:0; font
 .place-item:active{ background:var(--surface-2); }
 .place-item .name{ font-weight:600; font-size:14px; }
 .place-item .dot{ width:9px; height:9px; border-radius:50%; background:var(--free); flex:none; }
+.place-item .side{ display:flex; align-items:center; gap:10px; flex:none; }
+.place-item .until{ font-size:12px; font-weight:600; color:var(--text-muted); white-space:nowrap; }
 
 /* ---------- bottom sheet ---------- */
 .sheet-backdrop{
@@ -325,7 +327,7 @@ button.place-group-title{ border:0; background:none; width:100%; padding:0; font
 
 /* ---------- tab bar ---------- */
 .tabbar{
-  position:sticky; bottom:0; display:flex; border-top:1px solid var(--border);
+  position:sticky; bottom:0; z-index:10; display:flex; border-top:1px solid var(--border);
   background:var(--surface); padding-bottom:var(--safe-b);
 }
 /* ردیاب لایه‌ی مشترک (Shared Layout): یه پیل که بین تب‌ها می‌لغزه */
@@ -356,6 +358,15 @@ button.place-group-title{ border:0; background:none; width:100%; padding:0; font
   animation-duration:.38s;
   animation-timing-function:cubic-bezier(.2,.8,.2,1);
 }
+
+/* ---------- تب درس/استاد ---------- */
+.suggest-list button .kind{
+  display:inline-block; margin-inline-start:8px; padding:1px 8px; border-radius:99px;
+  font-size:11px; font-weight:600; vertical-align:middle;
+}
+.suggest-list button .kind.prof{ background:var(--free-soft); color:var(--free); }
+.suggest-list button .kind.course{ background:var(--busy-soft); color:var(--busy); }
+.block .b-sub.place{ white-space:nowrap; }
 
 @media (min-width:600px){
   .app{ border-inline:1px solid var(--border); }
@@ -391,6 +402,17 @@ button.place-group-title{ border:0; background:none; width:100%; padding:0; font
       <div id="roomResult"></div>
     </section>
 
+    <!-- ===== تب وضعیت درس/استاد ===== -->
+    <section class="view" id="view-prof">
+      <div class="field-label">نام درس یا نام استاد</div>
+      <div class="suggest-box">
+        <input class="search-input" id="profInput" type="text" inputmode="text" placeholder="مثلاً ریاضی عمومی یا نام استاد…" autocomplete="off">
+        <div class="suggest-list" id="profSuggest"></div>
+      </div>
+      <div id="profEmpty" class="empty-state">اسم یه درس یا استاد رو جستجو و انتخاب کن تا جدول زمانی هفتگی‌ش رو ببینی.</div>
+      <div id="profResult"></div>
+    </section>
+
     <!-- ===== تب کلاس خالی ===== -->
     <section class="view" id="view-free">
       <div class="field-label">روز</div>
@@ -416,6 +438,10 @@ button.place-group-title{ border:0; background:none; width:100%; padding:0; font
     <button class="tab" data-view="room">
       <svg viewBox="0 0 24 24"><rect x="3.5" y="4" width="17" height="16" rx="2.5"/><path d="M3.5 9.5h17M8 4v3M16 4v3" stroke-linecap="round"/></svg>
       <span>وضعیت کلاس</span>
+    </button>
+    <button class="tab" data-view="prof">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.6"/><path d="M4.5 20c.9-3.6 3.8-5.6 7.5-5.6s6.6 2 7.5 5.6" stroke-linecap="round"/></svg>
+      <span>درس/استاد</span>
     </button>
     <button class="tab" data-view="free">
       <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2" stroke-linecap="round" stroke-linejoin="round"/></svg>
@@ -524,9 +550,10 @@ if(TIME_MARKS.length===0){ for(var h=8; h<=20; h++) TIME_MARKS.push(h*60); }
 
 /* ================= سوییچ تب‌ها ================= */
 var tabs = document.querySelectorAll(".tab");
-var views = { search: document.getElementById("view-search"), room: document.getElementById("view-room"), free: document.getElementById("view-free") };
-var TAB_ORDER = ["search","room","free"];
+var views = { search: document.getElementById("view-search"), room: document.getElementById("view-room"), prof: document.getElementById("view-prof"), free: document.getElementById("view-free") };
+var TAB_ORDER = ["search","room","prof","free"];
 var tabIndicator = document.getElementById("tabIndicator");
+if(tabIndicator) tabIndicator.style.width = "calc(100% / " + TAB_ORDER.length + ")";
 function moveTabIndicator(name){
   var idx = TAB_ORDER.indexOf(name);
   if(idx === -1 || !tabIndicator) return;
@@ -872,6 +899,186 @@ function selectRoom(place){
   });
 }
 
+/* ================= تب وضعیت درس/استاد ================= */
+var profInput = document.getElementById("profInput"), profSuggest = document.getElementById("profSuggest");
+var profEmpty = document.getElementById("profEmpty"), profResult = document.getElementById("profResult");
+
+// اگه چند استاد توی یه فیلد باشن (با ، ؛ / یا خط جدید) جداشون می‌کنیم
+function splitProfs(raw){
+  return String(raw||"").split(/[،؛;\n\/]+/).map(function(x){ return x.trim(); }).filter(Boolean);
+}
+var PROF_MAP = {}, COURSE_MAP = {};
+COURSES.forEach(function(c, idx){
+  splitProfs(c["نام استاد"]).forEach(function(name){
+    var key = normalizePersian(name);
+    if(!key) return;
+    if(!PROF_MAP[key]) PROF_MAP[key] = { kind:"prof", name:name, hay:key, idxs:[] };
+    PROF_MAP[key].idxs.push(idx);
+  });
+  var cname = (c["نام درس"]||"").trim();
+  var ckey = normalizePersian(cname);
+  if(ckey){
+    if(!COURSE_MAP[ckey]) COURSE_MAP[ckey] = { kind:"course", name:cname, hay:ckey, idxs:[] };
+    COURSE_MAP[ckey].idxs.push(idx);
+  }
+});
+var PROF_ENTRIES = Object.keys(PROF_MAP).map(function(k){ return PROF_MAP[k]; })
+  .concat(Object.keys(COURSE_MAP).map(function(k){ return COURSE_MAP[k]; }));
+PROF_ENTRIES.sort(function(a,b){ return a.name.localeCompare(b.name,"fa"); });
+
+var profList = []; // نتایج فعلیِ لیست پیشنهاد
+function updateProfSuggest(){
+  // جستجو کلمه‌به‌کلمه و مستقل از ترتیب (مثل تب جستجو)
+  var tokens = normalizePersian(profInput.value).split(" ").filter(Boolean);
+  if(tokens.length===0){ profSuggest.classList.remove("show"); profList = []; return; }
+  var found = PROF_ENTRIES.filter(function(en){
+    for(var i=0;i<tokens.length;i++){ if(en.hay.indexOf(tokens[i]) === -1) return false; }
+    return true;
+  });
+  // اونایی که با اولین کلمه شروع می‌شن بالاتر
+  found.sort(function(a,b){
+    var pa = a.hay.indexOf(tokens[0])===0 ? 0 : 1, pb = b.hay.indexOf(tokens[0])===0 ? 0 : 1;
+    return pa - pb;
+  });
+  profList = found.slice(0,30);
+  if(profList.length===0){ profSuggest.classList.remove("show"); return; }
+  profSuggest.innerHTML = profList.map(function(en, i){
+    return "<button data-i='"+i+"' style='--i:"+Math.min(i,8)+"'>"+escapeHTML(en.name)
+      + "<span class='kind "+en.kind+"'>"+(en.kind==="prof"?"استاد":"درس")+"</span></button>";
+  }).join("");
+  profSuggest.classList.add("show");
+}
+profInput.addEventListener("input", function(){
+  if(!profInput.value.trim()){
+    profResult.innerHTML = ""; profEmpty.style.display = "";
+  }
+  updateProfSuggest();
+});
+profInput.addEventListener("keydown", function(e){
+  if(e.key === "Enter" && profList.length){
+    e.preventDefault();
+    pickProfEntry(profList[0]);
+    profSuggest.classList.remove("show");
+    profInput.blur();
+  }
+});
+profSuggest.addEventListener("click", function(e){
+  var btn = e.target.closest("button"); if(!btn) return;
+  var en = profList[Number(btn.dataset.i)]; if(!en) return;
+  pickProfEntry(en);
+  btn.classList.add("rb-pop");
+  setTimeout(function(){ profSuggest.classList.remove("show"); }, 380);
+});
+document.addEventListener("click", function(e){
+  if(!profInput.contains(e.target) && !profSuggest.contains(e.target)) profSuggest.classList.remove("show");
+});
+
+function uniq(arr){ var seen = {}, out = []; arr.forEach(function(x){ if(x && !seen[x]){ seen[x]=1; out.push(x); } }); return out; }
+
+// جدول هفتگیِ مشترک برای استاد/درس. اگه چند جلسه هم‌روز هم‌پوشانی داشته باشن
+// (مثلاً چند گروه یه درس سر یه ساعت توی کلاس‌های مختلف) زیر هم (در چند «لاین») نشون داده می‌شن
+function buildScheduleHTML(sessions, mode){
+  var ROW_H = 78, EMPTY_H = 46;
+  var daysShown = DAY_KEYS.filter(function(d){
+    return d !== "جمعه" || sessions.some(function(s){ return s.day === d; });
+  });
+  var minStart = Math.min.apply(null, sessions.map(function(s){return s.start;}));
+  var maxEnd   = Math.max.apply(null, sessions.map(function(s){return s.end;}));
+  minStart = Math.floor(minStart/60)*60; if(minStart<0) minStart=0;
+  maxEnd   = Math.ceil(maxEnd/60)*60;
+  if(maxEnd - minStart < 180){ maxEnd = minStart + 180; }
+  var span = maxEnd - minStart;
+  var hrs = Math.max(1, Math.round(span/60));
+  var trackW = hrs * 78;
+  function pct(min){ return (min/span*100).toFixed(4) + "%"; }
+
+  var html = "<div class='grid-wrap'><div class='sched' style='--track-w:"+trackW+"px; --hrs:"+hrs+";'>";
+  html += "<div class='sched-row sched-head'><div class='day-lbl'></div><div class='track'>";
+  for(var h=minStart; h<maxEnd; h+=60){
+    html += "<div class='hour-lbl' style='right:"+pct(h-minStart)+";'>"+fmtMin(h)+"</div>";
+  }
+  html += "</div></div>";
+
+  daysShown.forEach(function(d){
+    // هم‌روز + هم‌ساعت + هم‌مکان = یه کلاس که چندبار ثبت شده (برای رشته‌های مختلف) → یکی می‌شه
+    var groups = {}, order = [];
+    sessions.filter(function(s){ return s.day===d; }).forEach(function(s){
+      var key = s.start+"-"+s.end+"|"+s.place;
+      if(!groups[key]){ groups[key] = []; order.push(key); }
+      groups[key].push(s);
+    });
+    var list = order.map(function(k){ return groups[k]; });
+    list.sort(function(a,b){ return (a[0].start-b[0].start) || (a[0].end-b[0].end); });
+    var laneEnds = [];
+    list.forEach(function(g){
+      var lane = -1;
+      for(var i=0;i<laneEnds.length;i++){ if(laneEnds[i] <= g[0].start){ lane = i; break; } }
+      if(lane === -1){ lane = laneEnds.length; laneEnds.push(0); }
+      laneEnds[lane] = g[0].end;
+      g.lane = lane;
+    });
+    var rowH = laneEnds.length ? laneEnds.length*ROW_H : EMPTY_H;
+    html += "<div class='sched-row'><div class='day-lbl' style='height:"+rowH+"px'>"+DAY_LABEL[d]+"</div>"
+          + "<div class='track' style='height:"+rowH+"px'>";
+    list.forEach(function(g){
+      var s0 = g[0];
+      var pos = "right:calc("+pct(s0.start-minStart)+" + 1px); width:calc("+pct(s0.end-s0.start)+" - 2px);"
+              + "top:"+(g.lane*ROW_H+5)+"px; height:"+(ROW_H-10)+"px; bottom:auto;";
+      var idxs = uniq(g.map(function(s){ return String(s.courseIdx); })).join(",");
+      var titles = uniq(g.map(function(s){
+        var c = COURSES[s.courseIdx];
+        return mode==="prof" ? (c["نام درس"]||"") : (c["نام استاد"]||"");
+      })).join(" / ");
+      var time = fmtMin(s0.start)+"–"+fmtMin(s0.end);
+      html += "<button class='block' style='"+pos+"' data-idxs='"+idxs+"'>"
+            + (g.length>1 ? "<span class='b-count'>"+g.length+"</span>" : "")
+            + "<div class='b-title'>"+escapeHTML(titles)+"</div>"
+            + (s0.place ? "<div class='b-sub place'>"+escapeHTML(s0.place)+"</div>" : "")
+            + "<div class='b-sub'>"+time+"</div>"
+            + "</button>";
+    });
+    html += "</div></div>";
+  });
+  html += "</div></div>";
+  return html;
+}
+
+function pickProfEntry(en){
+  profInput.value = en.name;
+  profEmpty.style.display = "none";
+  var idxSet = {};
+  en.idxs.forEach(function(i){ idxSet[i] = true; });
+  var sessions = SESSIONS.filter(function(s){ return idxSet[s.courseIdx]; });
+  var mode = en.kind;
+  var title = "<div class='room-title'>"+escapeHTML(en.name)+"</div>";
+  if(sessions.length === 0){
+    profResult.innerHTML = title + "<div class='empty-state'>برای این "+(mode==="prof"?"استاد":"درس")+" زمان‌بندی‌ای ثبت نشده.</div>";
+    return;
+  }
+  // تعداد جلسه‌های واقعی (ثبت‌های تکراریِ هم‌ساعت/هم‌مکان یکی حساب می‌شن)
+  var slotSet = {};
+  sessions.forEach(function(s){ slotSet[s.day+"|"+s.start+"|"+s.end+"|"+s.place] = 1; });
+  var slots = Object.keys(slotSet).length;
+  var sub;
+  if(mode === "prof"){
+    var nCourses = uniq(en.idxs.map(function(i){ return normalizePersian(COURSES[i]["نام درس"]||""); })).length;
+    sub = nCourses+" درس · "+slots+" جلسه در هفته";
+  } else {
+    var nProfs = uniq([].concat.apply([], en.idxs.map(function(i){ return splitProfs(COURSES[i]["نام استاد"]).map(normalizePersian); }))).length;
+    sub = (nProfs ? nProfs+" استاد · " : "")+slots+" جلسه در هفته";
+  }
+  profResult.innerHTML = title
+    + "<div class='room-sub'>"+sub+"</div>"
+    + buildScheduleHTML(sessions, mode);
+  profResult.querySelectorAll(".block").forEach(function(b){
+    b.addEventListener("click", function(){
+      var idxs = b.dataset.idxs.split(",").map(Number);
+      if(idxs.length === 1) openSheetTransition(b, courseDetailHTML(COURSES[idxs[0]]));
+      else openMergedSheetTransition(b, idxs);
+    });
+  });
+}
+
 /* ================= تب کلاس خالی ================= */
 var freeDayChips = document.getElementById("freeDayChips");
 var selectedFreeDay = DAY_KEYS[0];
@@ -908,8 +1115,11 @@ function isNegativeRoom(place){
   return /-$/.test(trimmed);
 }
 
-function placeItemHTML(p){
-  return "<button type='button' class='place-item' data-place='"+escapeHTML(p)+"'><span class='name'>"+escapeHTML(p)+"</span><span class='dot'></span></button>";
+// untilMin: ساعت شروع کلاس بعدی همون مکان (یا null اگه تا آخر روز کلاسی نداره)
+function placeItemHTML(p, untilMin){
+  var until = (untilMin===null || untilMin===undefined) ? "تا آخر روز" : "تا: "+fmtMin(untilMin);
+  return "<button type='button' class='place-item' data-place='"+escapeHTML(p)+"'><span class='name'>"+escapeHTML(p)+"</span>"
+    + "<span class='side'><span class='until'>"+until+"</span><span class='dot'></span></span></button>";
 }
 // کلیک روی یه کلاس خالی → رفتن به تب «وضعیت کلاس» با برنامه‌ی همون کلاس
 document.getElementById("freeResultWrap").addEventListener("click", function(e){
@@ -927,11 +1137,14 @@ function showFreeRooms(){
   var s = Number(freeStart.value), e = Number(freeEnd.value);
   var wrap = document.getElementById("freeResultWrap");
   if(e <= s){ wrap.innerHTML = "<div class='empty-state'>ساعت پایان باید بعد از ساعت شروع باشه.</div>"; return; }
-  var busy = {};
+  var busy = {}, nextStart = {};
   SESSIONS.forEach(function(sess){
     if(sess.day !== selectedFreeDay) return;
     if(sess.start < e && sess.end > s) busy[sess.place] = true;
+    // اولین کلاسی که بعد از پایان بازه توی اون مکان شروع می‌شه
+    else if(sess.start >= e && (nextStart[sess.place]===undefined || sess.start < nextStart[sess.place])) nextStart[sess.place] = sess.start;
   });
+  function untilOf(p){ return nextStart[p]===undefined ? null : nextStart[p]; }
   var free = ALL_PLACES.filter(function(p){ return !busy[p]; });
   if(free.length===0){
     wrap.innerHTML = "<div class='empty-state'>توی این بازه هیچ کلاسی خالی نیست.</div>";
@@ -956,14 +1169,14 @@ function showFreeRooms(){
   order.forEach(function(key){
     var title = key==="other" ? "سایر مکان‌ها" : "کلاس‌های "+key+" تا "+(Number(key)+99);
     html += "<div class='place-group'><div class='place-group-title'>"+title+"</div><div class='place-list'>";
-    buckets[key].forEach(function(p){ html += placeItemHTML(p); });
+    buckets[key].forEach(function(p){ html += placeItemHTML(p, untilOf(p)); });
     html += "</div></div>";
   });
   if(negativeList.length){
     html += "<div class='place-group'>"
       + "<button type='button' class='place-group-title neg-toggle' id='negToggle'>کلاس‌های منفی ("+negativeList.length+")<span class='neg-chevron'>▾</span></button>"
       + "<div class='place-list' id='negList' style='display:none;'>";
-    negativeList.forEach(function(p){ html += placeItemHTML(p); });
+    negativeList.forEach(function(p){ html += placeItemHTML(p, untilOf(p)); });
     html += "</div></div>";
   }
   wrap.innerHTML = html;
