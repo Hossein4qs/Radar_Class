@@ -19,6 +19,7 @@
   --text:#16211f; --text-muted:#5c6e6a;
   --free:#1f7a6c; --free-soft:#dcefea;
   --busy:#b4533b; --busy-soft:#f4e3dd;
+  --warn:#d9822b; --warn-soft:#fbead6;
   --shadow:rgba(20,30,28,.10);
   --radius:14px; --radius-sm:9px;
   --safe-t:env(safe-area-inset-top,0px); --safe-b:env(safe-area-inset-bottom,0px);
@@ -30,6 +31,7 @@
     --text:#e8ecea; --text-muted:#93a5a1;
     --free:#4fbfae; --free-soft:rgba(79,191,174,.16);
     --busy:#e1876b; --busy-soft:rgba(225,135,107,.18);
+    --warn:#f0a24d; --warn-soft:rgba(240,162,77,.16);
     --shadow:rgba(0,0,0,.4);
     color-scheme: dark;
   }
@@ -39,6 +41,7 @@
   --text:#e8ecea; --text-muted:#93a5a1;
   --free:#4fbfae; --free-soft:rgba(79,191,174,.16);
   --busy:#e1876b; --busy-soft:rgba(225,135,107,.18);
+  --warn:#f0a24d; --warn-soft:rgba(240,162,77,.16);
   --shadow:rgba(0,0,0,.4);
   color-scheme: dark;
 }
@@ -233,9 +236,47 @@ main{ flex:1; padding:2px 14px calc(84px + var(--safe-b)); }
 .day-chip::before{ background:var(--free); }
 .day-chip.sel{ border-color:var(--free); color:#fff; font-weight:700; }
 .day-chip.sel::before{ opacity:1; }
-.time-row{ display:flex; gap:10px; align-items:center; }
-.time-row .select-input{ flex:1; }
-.time-row span{ color:var(--text-muted); font-size:13px; }
+/* انتخاب شروع و پایان با دقت ۳۰ دقیقه */
+.t-row{ display:flex; align-items:center; gap:10px; margin-bottom:8px; }
+.t-row > span{ width:26px; font-size:13px; font-weight:600; color:var(--text-muted); }
+.stepper{ flex:1; display:flex; align-items:center; justify-content:space-between; background:var(--surface-2); border:1px solid var(--border); border-radius:99px; padding:3px; }
+.stepper b{ font-size:19px; letter-spacing:.3px; }
+.tval{ position:relative; flex:1; text-align:center; cursor:pointer; align-self:stretch; display:flex; align-items:center; justify-content:center; }
+.tval b{ border-bottom:1.5px dashed var(--text-muted); line-height:1.25; }
+.tin{ position:absolute; inset:0; width:100%; height:100%; opacity:0; border:0; padding:0; margin:0; font-size:16px; cursor:pointer; }
+.tin::-webkit-calendar-picker-indicator{ position:absolute; inset:0; width:100%; height:100%; cursor:pointer; }
+.step{ width:44px; height:44px; flex:none; border-radius:50%; border:1px solid var(--border); background:var(--surface); color:var(--text); cursor:pointer; display:flex; align-items:center; justify-content:center; }
+.step:active{ transform:scale(.92); }
+.step:disabled{ opacity:.3; cursor:default; }
+.step svg{ width:18px; height:18px; stroke:currentColor; fill:none; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
+/* نوار ساعتی */
+.strip{ position:relative; display:flex; height:58px; margin-top:12px; border:1px solid var(--border); border-radius:12px; background:var(--surface-2); }
+.cell{ flex:1; position:relative; border:0; background:none; padding:0; cursor:pointer; color:var(--text-muted); font-size:12px; z-index:2; }
+.cell + .cell{ border-inline-start:1px solid var(--border); }
+.cell span{ position:absolute; inset-inline:0; bottom:6px; text-align:center; }
+.cell:active{ background:var(--free-soft); }
+.t-range{ position:absolute; top:-1px; bottom:-1px; border-radius:10px; background:var(--free-soft); border:2px solid var(--free); pointer-events:none; z-index:1; transition:right .3s cubic-bezier(.2,.9,.25,1.1), width .3s cubic-bezier(.2,.9,.25,1.1); }
+.t-now{ position:absolute; top:-7px; bottom:-1px; width:2px; margin-right:-1px; background:var(--busy); z-index:3; pointer-events:none; }
+.t-now::before{ content:""; position:absolute; top:0; right:-3px; width:8px; height:8px; border-radius:50%; background:var(--busy); }
+.t-legend{ display:flex; flex-wrap:wrap; gap:6px 14px; font-size:12px; color:var(--text-muted); margin:10px 2px 0; }
+.t-legend i{ display:inline-block; width:10px; height:10px; border-radius:3px; margin-inline-end:5px; vertical-align:-1px; }
+.t-note{ margin-top:12px; padding:9px 12px; border-radius:9px; background:var(--surface-2); border:1px solid var(--border); font-size:12.5px; color:var(--text-muted); }
+.t-note[hidden], .t-legend span[hidden]{ display:none; }
+.t-note.warn{ background:var(--warn-soft); border-color:var(--warn); color:var(--text); }
+.t-note.live{ background:var(--free-soft); border-color:var(--free); color:var(--free); font-weight:600; }
+.result-count.warn{ color:var(--warn); font-weight:600; }
+@keyframes rise{ from{ opacity:0; transform:translateY(8px); } to{ opacity:1; transform:none; } }
+.t-note, #freeResultWrap .place-item, #freeResultWrap .result-count, #freeResultWrap .place-group-title, #freeResultWrap .empty-state{ animation:rise .32s ease backwards; }
+#freeResultWrap.static .place-item, #freeResultWrap.static .result-count, #freeResultWrap.static .place-group-title, #freeResultWrap.static .empty-state{ animation:none; }
+@media (prefers-reduced-motion: reduce){ .t-note, #freeResultWrap .place-item, #freeResultWrap .result-count, #freeResultWrap .place-group-title, #freeResultWrap .empty-state{ animation:none; } }
+.soon-count{ color:var(--warn); font-weight:600; }
+.place-item.soon{ border-color:var(--warn); background:var(--warn-soft); }
+.place-item .side.col{ flex-direction:column; align-items:flex-end; gap:0; }
+.place-item .l1{ display:flex; align-items:center; gap:8px; }
+.place-item .l1.w .until{ color:var(--warn); font-weight:700; }
+.place-item .l2{ font-size:11.5px; color:var(--text-muted); }
+.place-item .dot.warn{ background:var(--warn); animation:ping 1.8s ease-out infinite; }
+@keyframes ping{ 0%{ box-shadow:0 0 0 0 rgba(217,130,43,.55); } 80%,100%{ box-shadow:0 0 0 7px rgba(217,130,43,0); } }
 .now-btn{
   position:relative; isolation:isolate;
   width:100%; margin-top:10px; padding:11px; border-radius:var(--radius); cursor:pointer;
@@ -503,13 +544,20 @@ html.theme-fade, html.theme-fade *{
       <div class="field-label">روز</div>
       <div class="day-chips" id="freeDayChips"></div>
       <div class="field-label">بازه‌ی زمانی</div>
-      <div class="time-row">
-        <select class="select-input" id="freeStart"></select>
-        <span>تا</span>
-        <select class="select-input" id="freeEnd"></select>
-      </div>
-      <button class="now-btn" id="freeNowBtn">🕐 همین الان</button>
-      <button class="go-btn" id="freeGoBtn">نمایش کلاس‌های خالی</button>
+      <div class="t-row"><span>از</span><div class="stepper">
+        <button class="step" id="fSMinus" aria-label="۳۰ دقیقه زودتر"><svg viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></svg></button>
+        <label class="tval"><b id="fSVal"></b><input type="time" class="tin" id="fSIn" step="60" aria-label="انتخاب دقیق ساعت"></label>
+        <button class="step" id="fSPlus" aria-label="۳۰ دقیقه دیرتر"><svg viewBox="0 0 24 24"><path d="m15 6-6 6 6 6"/></svg></button>
+      </div></div>
+      <div class="t-row"><span>تا</span><div class="stepper">
+        <button class="step" id="fEMinus" aria-label="۳۰ دقیقه زودتر"><svg viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></svg></button>
+        <label class="tval"><b id="fEVal"></b><input type="time" class="tin" id="fEIn" step="60" aria-label="انتخاب دقیق ساعت"></label>
+        <button class="step" id="fEPlus" aria-label="۳۰ دقیقه دیرتر"><svg viewBox="0 0 24 24"><path d="m15 6-6 6 6 6"/></svg></button>
+      </div></div>
+      <div class="strip" id="freeStrip"></div>
+      <div class="t-legend"><span><i style="background:var(--free)"></i>بازه‌ی انتخاب‌شده</span><span><i style="background:var(--busy)"></i>ساعت فعلی</span><span id="freeSoonLegend"><i style="background:var(--warn);border-radius:50%"></i>به‌زودی خالی</span></div>
+      <div class="t-note" id="freeStatus" hidden></div>
+      <div class="t-note" id="freeNote" hidden>یه ساعت دیگه هم روی نوار بزن تا بازه کامل بشه.</div>
       <div id="freeResultWrap"></div>
     </section>
   </main>
@@ -1246,26 +1294,108 @@ function pickProfEntry(en){
 /* ================= تب کلاس خالی ================= */
 var freeDayChips = document.getElementById("freeDayChips");
 var selectedFreeDay = DAY_KEYS[0];
-function setFreeDay(d){
-  selectedFreeDay = d;
-  freeDayChips.querySelectorAll(".day-chip").forEach(function(c){ c.classList.toggle("sel", c.dataset.day===d); });
+/* بازه‌ی روز: از اولین ساعت داده‌ها تا ۱۹:۰۰ (حداکثر) */
+var F_DAY0 = TIME_MARKS.length ? Math.floor(TIME_MARKS[0]/60)*60 : 480;
+var F_DAY1 = 19*60;
+if(F_DAY0 >= F_DAY1) F_DAY0 = F_DAY1 - 60;
+var F_SOON = 30;                       // «به‌زودی خالی» = حداکثر ۳۰ دقیقه مونده
+var fStart = F_DAY0, fEnd = F_DAY0 + 60, fAnchor = null;
+var fLive = false;                     // حالت «همین الان» (پیش‌فرض)
+var freeStrip = document.getElementById("freeStrip"), freeNote = document.getElementById("freeNote"), freeStatus = document.getElementById("freeStatus");
+// انیمیشن ورود رو از اول اجرا می‌کنه
+function popEl(el){ el.style.animation = "none"; void el.offsetWidth; el.style.animation = ""; }
+function nowFloat(){ var d = new Date(); return d.getHours()*60 + d.getMinutes() + d.getSeconds()/60; }
+function nowMinutes(){ return Math.floor(nowFloat()); }
+function todayKey(){ return DAY_KEYS[(new Date().getDay()+1)%7]; }   // ممکنه «جمعه» باشه
+function clampWindow(st, len){
+  st = Math.max(F_DAY0, Math.min(F_DAY1 - 30, st));
+  return [st, Math.min(F_DAY1, st + len)];
 }
+// ورود به حالت «همین الان»؛ اگه خارج از ساعت کاری باشیم هشدار می‌ده و می‌ره سراغ اولین ساعت کاری بعدی
+function enterLive(){
+  var key = todayKey(), idx = DAY_KEYS.indexOf(key), nm = nowFloat();
+  var working = idx < 6;
+  if(working && nm >= F_DAY0 && nm < F_DAY1){
+    fLive = true; selectedFreeDay = key;
+    var w = clampWindow(Math.floor(nm/30)*30, 60); fStart = w[0]; fEnd = w[1];
+    return;
+  }
+  fLive = false;
+  var target, msg;
+  if(working && nm < F_DAY0){ target = key; msg = "هنوز ساعت کلاس‌ها شروع نشده (از "+fmtMin(F_DAY0)+")"; }
+  else { target = DAY_KEYS[(idx+1)%7 === 6 ? 0 : (idx+1)%7]; msg = key==="جمعه" ? "امروز جمعه‌ست و کلاسی نیست" : "الان بعد از ساعت کلاس‌هاست (تا "+fmtMin(F_DAY1)+")"; }
+  selectedFreeDay = target; fStart = F_DAY0; fEnd = F_DAY0 + 60;
+  freeStatus.className = "t-note warn"; freeStatus.hidden = false;
+  freeStatus.textContent = "⚠️ " + msg + " — اولین ساعت کاری بعدی نشون داده می‌شه: " + DAY_LABEL[target] + " " + fmtMin(F_DAY0) + ".";
+  popEl(freeStatus);
+}
+// هر تغییر دستی کاربر، حالت «همین الان» و هشدار رو کنار می‌ذاره
+function leaveLive(){ fLive = false; freeStatus.hidden = true; }
+selectedFreeDay = DAY_KEYS[0];
+enterLive();
+
+// روزهای هفته
+function setFreeDay(d){ leaveLive(); fAnchor = null; selectedFreeDay = d; showFreeRooms(); }
 DAY_KEYS.slice(0,6).forEach(function(d){
   var b = document.createElement("button");
-  b.className = "day-chip" + (d===selectedFreeDay ? " sel":"");
+  b.className = "day-chip";
   b.textContent = DAY_LABEL[d];
   b.dataset.day = d;
   b.addEventListener("click", function(){ setFreeDay(d); });
   freeDayChips.appendChild(b);
 });
 
-var freeStart = document.getElementById("freeStart"), freeEnd = document.getElementById("freeEnd");
-TIME_MARKS.forEach(function(m){
-  var o1=document.createElement("option"); o1.value=m; o1.textContent=fmtMin(m); freeStart.appendChild(o1);
-  var o2=document.createElement("option"); o2.value=m; o2.textContent=fmtMin(m); freeEnd.appendChild(o2);
+// نوار ساعتی: دو لمس = یه بازه ؛ لمس اول یه ساعت کامل رو انتخاب می‌کنه
+for(var fh = F_DAY0/60; fh < F_DAY1/60; fh++){
+  (function(h){
+    var c = document.createElement("button"); c.type = "button"; c.className = "cell";
+    c.innerHTML = "<span>"+h+"</span>";
+    c.addEventListener("click", function(){
+      var t = h*60;
+      leaveLive();
+      if(fAnchor === null){ fStart = t; fEnd = t + 60; fAnchor = t; }
+      else { fStart = Math.min(fAnchor, t); fEnd = Math.max(fAnchor, t) + 60; fAnchor = null; }
+      showFreeRooms();
+    });
+    freeStrip.appendChild(c);
+  })(fh);
+}
+var fRange = document.createElement("div"); fRange.className = "t-range"; freeStrip.appendChild(fRange);
+var fNowLine = document.createElement("div"); fNowLine.className = "t-now"; freeStrip.appendChild(fNowLine);
+function fPct(m){ return (m - F_DAY0) / (F_DAY1 - F_DAY0) * 100; }
+
+function moveFree(which, delta){
+  leaveLive(); fAnchor = null;
+  if(which === "s") fStart = Math.max(F_DAY0, Math.min(fEnd-30, fStart+delta));
+  else fEnd = Math.min(F_DAY1, Math.max(fStart+30, fEnd+delta));
+  showFreeRooms();
+}
+// تنظیم دقیق ساعت با ساعت‌انتخاب خود گوشی (با دقت یک دقیقه)
+var fSIn = document.getElementById("fSIn"), fEIn = document.getElementById("fEIn");
+fSIn.min = fEIn.min = fmtMin(F_DAY0); fSIn.max = fEIn.max = fmtMin(F_DAY1);
+function setExact(which, val){
+  var m = toMin(val); if(m === null) return;
+  leaveLive(); fAnchor = null;
+  m = Math.max(F_DAY0, Math.min(F_DAY1, m));
+  if(which === "s"){
+    if(m >= fEnd){ fEnd = Math.min(F_DAY1, m + 30); if(m >= fEnd) m = fEnd - 30; }
+    fStart = m;
+  } else {
+    if(m <= fStart){ fStart = Math.max(F_DAY0, m - 30); if(m <= fStart) m = fStart + 30; }
+    fEnd = m;
+  }
+  showFreeRooms();
+}
+[[fSIn,"s"],[fEIn,"e"]].forEach(function(p){
+  p[0].addEventListener("change", function(){ setExact(p[1], p[0].value); });
+  p[0].addEventListener("click", function(){        // دسکتاپ: باز کردن صریح ساعت‌انتخاب (موبایل خودش باز می‌کنه)
+    if(window.matchMedia("(pointer:fine)").matches && p[0].showPicker){ try{ p[0].showPicker(); }catch(err){} }
+  });
 });
-freeStart.selectedIndex = 0;
-freeEnd.selectedIndex = Math.min(TIME_MARKS.length-1, 1);
+document.getElementById("fSMinus").addEventListener("click", function(){ moveFree("s",-30); });
+document.getElementById("fSPlus").addEventListener("click", function(){ moveFree("s",30); });
+document.getElementById("fEMinus").addEventListener("click", function(){ moveFree("e",-30); });
+document.getElementById("fEPlus").addEventListener("click", function(){ moveFree("e",30); });
 
 // عدد کلاس رو استخراج می‌کنه (بدون علامت)
 function roomNumber(place){
@@ -1285,6 +1415,12 @@ function placeItemHTML(p, untilMin){
   return "<button type='button' class='place-item' data-place='"+escapeHTML(p)+"'><span class='name'>"+escapeHTML(p)+"</span>"
     + "<span class='side'><span class='until'>"+until+"</span><span class='dot'></span></span></button>";
 }
+// کلاسی که تا ≤۳۰ دقیقه دیگه خالی می‌شه: دایره‌ی نارنجی + مدت باقی‌مونده + بازه‌ی خالی بعدش
+function soonItemHTML(o){
+  return "<button type='button' class='place-item soon' data-place='"+escapeHTML(o.place)+"'><span class='name'>"+escapeHTML(o.place)+"</span>"
+    + "<span class='side col'><span class='l1 w'><span class='until'>"+o.rem+" دقیقه تا خالی شدن</span><span class='dot warn'></span></span>"
+    + "<span class='l2'>خالی از "+fmtMin(o.from)+(o.until===null ? " تا آخر روز" : " تا "+fmtMin(o.until))+"</span></span></button>";
+}
 // کلیک روی یه کلاس خالی → رفتن به تب «وضعیت کلاس» با برنامه‌ی همون کلاس
 document.getElementById("freeResultWrap").addEventListener("click", function(e){
   var btn = e.target.closest(".place-item"); if(!btn) return;
@@ -1296,54 +1432,123 @@ document.getElementById("freeResultWrap").addEventListener("click", function(e){
   window.scrollTo(0,0);
 });
 
-function showFreeRooms(){
-
-  var s = Number(freeStart.value), e = Number(freeEnd.value);
-  var wrap = document.getElementById("freeResultWrap");
-  if(e <= s){ wrap.innerHTML = "<div class='empty-state'>ساعت پایان باید بعد از ساعت شروع باشه.</div>"; return; }
-  var busy = {}, nextStart = {};
-  SESSIONS.forEach(function(sess){
-    if(sess.day !== selectedFreeDay) return;
-    if(sess.start < e && sess.end > s) busy[sess.place] = true;
-    // اولین کلاسی که بعد از پایان بازه توی اون مکان شروع می‌شه
-    else if(sess.start >= e && (nextStart[sess.place]===undefined || sess.start < nextStart[sess.place])) nextStart[sess.place] = sess.start;
+// جلسه‌های هر مکان در هر روز (یه بار ساخته می‌شه)
+var FREE_INDEX = null;
+function freeIndex(){
+  if(FREE_INDEX) return FREE_INDEX;
+  FREE_INDEX = {};
+  SESSIONS.forEach(function(x){
+    var d = FREE_INDEX[x.day] || (FREE_INDEX[x.day] = {});
+    (d[x.place] || (d[x.place] = [])).push(x);
   });
-  function untilOf(p){ return nextStart[p]===undefined ? null : nextStart[p]; }
-  var free = ALL_PLACES.filter(function(p){ return !busy[p]; });
-  if(free.length===0){
-    wrap.innerHTML = "<div class='empty-state'>توی این بازه هیچ کلاسی خالی نیست.</div>";
+  return FREE_INDEX;
+}
+
+var lastFreeSig = null;
+function showFreeRooms(){
+  // حالت «همین الان»: بازه با گذشت زمان جلو می‌ره؛ اگه ساعت کاری تموم شد، هشدار + ساعت کاری بعدی
+  if(fLive){
+    var key0 = todayKey();
+    if(DAY_KEYS.indexOf(key0) > 5 || nowFloat() >= F_DAY1 || nowFloat() < F_DAY0 || key0 !== selectedFreeDay) enterLive();
+    else { var w0 = clampWindow(Math.floor(nowFloat()/30)*30, 60); fStart = w0[0]; fEnd = w0[1]; }
+  }
+  var s = fStart, e = fEnd, nowF = nowFloat(), now = Math.floor(nowF);
+
+  // کنترل‌ها
+  freeDayChips.querySelectorAll(".day-chip").forEach(function(c){ c.classList.toggle("sel", c.dataset.day===selectedFreeDay); });
+  fRange.style.right = fPct(s)+"%"; fRange.style.width = ((e-s)/(F_DAY1-F_DAY0)*100)+"%";
+  document.getElementById("fSVal").textContent = fmtMin(s);
+  document.getElementById("fEVal").textContent = fmtMin(e);
+  fSIn.value = fmtMin(s); fEIn.value = fmtMin(e);
+  document.getElementById("fSMinus").disabled = s <= F_DAY0;
+  document.getElementById("fSPlus").disabled = s+30 >= e;
+  document.getElementById("fEMinus").disabled = e-30 <= s;
+  document.getElementById("fEPlus").disabled = e >= F_DAY1;
+  freeNote.hidden = fAnchor === null;
+  var isToday = selectedFreeDay === todayKey();
+  var showNow = isToday && nowF >= F_DAY0 && nowF <= F_DAY1;
+  fNowLine.style.display = showNow ? "" : "none";
+  if(showNow) fNowLine.style.right = fPct(nowF)+"%";
+  if(fLive){
+    var liveTxt = "🕐 کلاس‌های خالی همین الان · ساعت " + fmtMin(now);
+    var liveNew = freeStatus.hidden || freeStatus.className.indexOf("live") < 0;
+    freeStatus.className = "t-note live"; freeStatus.hidden = false;
+    freeStatus.textContent = liveTxt;
+    if(liveNew) popEl(freeStatus);
+  }
+
+  var dayMap = freeIndex()[selectedFreeDay] || {};
+  var items = [];                       // {place, soon, until|rem/from}
+  ALL_PLACES.forEach(function(p){
+    var list = dayMap[p] || [];
+    function nextAfter(t){ var nx = null; list.forEach(function(x){ if(x.start >= t && (nx===null || x.start < nx)) nx = x.start; }); return nx; }
+    if(fLive){
+      // فقط بر اساس لحظه‌ی فعلی ساعت دستگاه
+      var cur = list.filter(function(x){ return x.start <= nowF && x.end > nowF; });
+      if(!cur.length){ items.push({ place:p, until:nextAfter(nowF) }); return; }
+      // کلاس‌های پشت‌سرهم یکی حساب می‌شن
+      var curEnd = Math.max.apply(null, cur.map(function(x){ return x.end; })), grew = true;
+      while(grew){ grew = false; list.forEach(function(x){ if(x.start <= curEnd && x.end > curEnd){ curEnd = x.end; grew = true; } }); }
+      var remF = curEnd - nowF;
+      if(remF <= F_SOON) items.push({ place:p, soon:true, rem:Math.max(1, Math.ceil(remF)), from:curEnd, until:nextAfter(curEnd) });
+    } else {
+      var ov = list.filter(function(x){ return x.start < e && x.end > s; });
+      if(!ov.length){ items.push({ place:p, until:nextAfter(e) }); return; }
+      // کلاسی که سر ساعت مرجع (امروز: الان یا شروع بازه، روزهای دیگه: شروع بازه) داره تموم می‌شه
+      var ref = isToday ? Math.max(s, nowF) : s;
+      var cur2 = list.filter(function(x){ return x.start <= ref && x.end > ref; });
+      if(!cur2.length) return;
+      var ce = Math.max.apply(null, cur2.map(function(x){ return x.end; })), gr = true;
+      while(gr){ gr = false; list.forEach(function(x){ if(x.start <= ce && x.end > ce){ ce = x.end; gr = true; } }); }
+      var after = list.some(function(x){ return x.start < e && x.end > ce; });   // بعد از خالی شدن، دوباره توی بازه کلاس نداشته باشه
+      if(!after && ce < e && ce - ref <= F_SOON) items.push({ place:p, soon:true, rem:Math.max(1, Math.ceil(ce-ref)), from:ce, until:nextAfter(ce) });
+    }
+  });
+  var wrap = document.getElementById("freeResultWrap");
+  // انیمیشن فقط وقتی اجرا می‌شه که نتیجه واقعاً عوض شده باشه (نه با به‌روزرسانی ۱۵ثانیه‌ای)
+  var sig = selectedFreeDay+"|"+s+"|"+e+"|"+fLive+"|"+items.map(function(o){ return o.place+(o.soon?"*":""); }).join(",");
+  wrap.classList.toggle("static", sig === lastFreeSig);
+  lastFreeSig = sig;
+  if(items.length===0){
+    wrap.innerHTML = "<div class='empty-state'>"+(fLive ? "الان هیچ کلاسی خالی نیست." : "توی این بازه هیچ کلاسی خالی نیست.")+"</div>";
     return;
   }
+  var freeN = items.filter(function(o){ return !o.soon; }).length, soonN = items.length - freeN;
   var buckets = {}, order = [], negativeList = [];
-  free.forEach(function(p){
-    if(isNegativeRoom(p)){ negativeList.push(p); return; }
+  items.forEach(function(o){
+    var p = o.place;
+    if(isNegativeRoom(p)){ negativeList.push(o); return; }
     var num = roomNumber(p);
     var key = num===null ? "other" : String(Math.floor(num/100)*100);
     if(!buckets[key]){ buckets[key]=[]; order.push(key); }
-    buckets[key].push(p);
+    buckets[key].push(o);
   });
+  function byNum(a,b){ return (roomNumber(b.place)||0)-(roomNumber(a.place)||0); }
   // از بزرگ به کوچیک: هم ترتیب دسته‌ها، هم مکان‌ها داخل هر دسته
-  order.forEach(function(key){ buckets[key].sort(function(a,b){ return (roomNumber(b)||0)-(roomNumber(a)||0); }); });
-  negativeList.sort(function(a,b){ return (roomNumber(b)||0)-(roomNumber(a)||0); });
+  order.forEach(function(key){ buckets[key].sort(byNum); });
+  negativeList.sort(byNum);
   order.sort(function(a,b){
     if(a==="other") return 1; if(b==="other") return -1;
     return Number(b)-Number(a);
   });
-  var html = "<div class='result-count'>"+free.length+" کلاس خالی از "+ALL_PLACES.length+" مورد</div>";
+  function itemHTML(o){ return o.soon ? soonItemHTML(o) : placeItemHTML(o.place, o.until); }
+  var html = "<div class='result-count'>"+freeN+" کلاس خالی از "+ALL_PLACES.length+" مورد"
+    + (soonN ? " · <span class='soon-count'>"+soonN+" کلاس تا ۳۰ دقیقه دیگه خالی می‌شه</span>" : "") + "</div>";
   order.forEach(function(key){
     var title = key==="other" ? "سایر مکان‌ها" : "کلاس‌های "+key+" تا "+(Number(key)+99);
     html += "<div class='place-group'><div class='place-group-title'>"+title+"</div><div class='place-list'>";
-    buckets[key].forEach(function(p){ html += placeItemHTML(p, untilOf(p)); });
+    buckets[key].forEach(function(o){ html += itemHTML(o); });
     html += "</div></div>";
   });
   if(negativeList.length){
     html += "<div class='place-group'>"
       + "<button type='button' class='place-group-title neg-toggle' id='negToggle'>کلاس‌های منفی ("+negativeList.length+")<span class='neg-chevron'>▾</span></button>"
       + "<div class='place-list' id='negList' style='display:none;'>";
-    negativeList.forEach(function(p){ html += placeItemHTML(p, untilOf(p)); });
+    negativeList.forEach(function(o){ html += itemHTML(o); });
     html += "</div></div>";
   }
   wrap.innerHTML = html;
+  wrap.querySelectorAll(".place-item").forEach(function(el, i){ el.style.animationDelay = Math.min(i, 24)*28 + "ms"; });
   var negToggle = document.getElementById("negToggle");
   if(negToggle){
     negToggle.addEventListener("click", function(){
@@ -1354,31 +1559,11 @@ function showFreeRooms(){
     });
   }
 }
-document.getElementById("freeGoBtn").addEventListener("click", showFreeRooms);
 
-// دکمه‌ی «همین الان»: روز و بازه‌ی زمانیِ جاری رو خودکار انتخاب می‌کنه و نتیجه رو نشون می‌ده
-document.getElementById("freeNowBtn").addEventListener("click", function(){
-  var now = new Date();
-  var ourDay = DAY_KEYS[(now.getDay()+1)%7];
-  if(ourDay === "جمعه") ourDay = DAY_KEYS[0]; // جمعه توی این تب نیست → شنبه
-  setFreeDay(ourDay);
-  var nowMin = now.getHours()*60 + now.getMinutes();
-  var idx = TIME_MARKS.findIndex(function(m){ return m > nowMin; });
-  var startMark, endMark;
-  if(idx === -1){
-    startMark = TIME_MARKS.length>1 ? TIME_MARKS[TIME_MARKS.length-2] : TIME_MARKS[0];
-    endMark = TIME_MARKS[TIME_MARKS.length-1];
-  } else if(idx === 0){
-    startMark = TIME_MARKS[0];
-    endMark = TIME_MARKS.length>1 ? TIME_MARKS[1] : TIME_MARKS[0];
-  } else {
-    startMark = TIME_MARKS[idx-1];
-    endMark = TIME_MARKS[idx];
-  }
-  freeStart.value = String(startMark);
-  freeEnd.value = String(endMark);
-  showFreeRooms();
-});
+// به‌روزرسانی خودکار: دقیقه‌شمار و خط «الان» با ساعت دستگاه هماهنگ می‌مونن
+showFreeRooms();
+setInterval(function(){ if(document.getElementById("view-free").classList.contains("active")) showFreeRooms(); }, 15000);
+document.addEventListener("visibilitychange", function(){ if(!document.hidden) showFreeRooms(); });
 
 /* ================= نصب اپ (Add to Home Screen) ================= */
 (function(){
