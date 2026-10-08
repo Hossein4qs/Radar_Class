@@ -446,36 +446,6 @@ html.theme-fade, html.theme-fade *{
 .theme-btn .ico-sun { opacity:0; transform:rotate(-90deg) scale(.4); }
 .theme-btn.is-dark .ico-moon{ opacity:0; transform:rotate(90deg) scale(.4); }
 .theme-btn.is-dark .ico-sun { opacity:1; transform:rotate(0) scale(1); }
-
-/* ---------- نشانگر آفلاین ---------- */
-.net-bar{
-  margin:0 14px; padding:0 12px; border-radius:var(--radius-sm);
-  display:flex; align-items:center; gap:8px; font-size:12.5px; font-weight:600;
-  background:var(--busy-soft); color:var(--busy);
-  max-height:0; opacity:0; overflow:hidden;
-  transition:max-height .35s ease, opacity .3s ease, margin .35s ease, padding .35s ease, background .3s ease, color .3s ease;
-}
-.net-bar.show{ max-height:48px; opacity:1; margin-top:2px; margin-bottom:6px; padding:8px 12px; }
-.net-bar.online{ background:var(--free-soft); color:var(--free); }
-.net-bar .dot{ width:8px; height:8px; border-radius:50%; background:currentColor; flex:none; }
-.net-bar:not(.online) .dot{ animation:netBlink 1.4s ease-in-out infinite; }
-@keyframes netBlink{ 0%,100%{ opacity:1; } 50%{ opacity:.25; } }
-
-/* ---------- جستجوهای اخیر ---------- */
-.recent{ margin-top:14px; }
-.recent-head{ display:flex; align-items:center; justify-content:space-between; font-size:12.5px; color:var(--text-muted); margin:0 2px 8px; }
-.recent-clear{ border:0; background:none; color:var(--busy); font-size:12.5px; cursor:pointer; padding:2px 4px; }
-.recent-list{ display:flex; flex-wrap:wrap; gap:8px; }
-.recent-chip{
-  display:inline-flex; align-items:center; max-width:100%;
-  background:var(--surface); border:1px solid var(--border); border-radius:99px; overflow:hidden;
-  animation:suggestRise .38s cubic-bezier(.2,.85,.25,1) backwards; animation-delay:calc(var(--i,0) * 38ms);
-}
-.rc-text{ border:0; background:none; cursor:pointer; padding:6px 6px 6px 12px; font-size:13px; max-width:220px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-.rc-text:active{ background:var(--surface-2); }
-.rc-kind{ font-size:10.5px; color:var(--text-muted); margin-inline-start:6px; }
-.rc-x{ border:0; background:none; cursor:pointer; color:var(--text-muted); font-size:16px; line-height:1; padding:6px 10px 6px 4px; }
-.rc-x:active{ color:var(--busy); }
 </style>
 </head>
 <body>
@@ -498,13 +468,10 @@ html.theme-fade, html.theme-fade *{
     </div>
   </header>
 
-  <div class="net-bar" id="netBar" role="status" aria-live="polite"><span class="dot"></span><span id="netText"></span></div>
-
   <main>
     <!-- ===== تب جستجو ===== -->
     <section class="view active" id="view-search">
       <input class="search-input" id="searchInput" type="text" placeholder="نام درس یا نام استاد را جستجو کنید…" autocomplete="off">
-      <div id="searchRecent"></div>
       <div class="result-count" id="searchCount"></div>
       <div class="card-list" id="searchResults"></div>
     </section>
@@ -527,7 +494,6 @@ html.theme-fade, html.theme-fade *{
         <input class="search-input" id="profInput" type="text" inputmode="text" placeholder="مثلاً ریاضی عمومی یا نام استاد…" autocomplete="off">
         <div class="suggest-list" id="profSuggest"></div>
       </div>
-      <div id="profRecent"></div>
       <div id="profEmpty" class="empty-state">اسم یه درس یا استاد رو جستجو و انتخاب کن تا جدول زمانی هفتگی‌ش رو ببینی.</div>
       <div id="profResult"></div>
     </section>
@@ -615,116 +581,6 @@ function normalizePersian(str){
 }
 function normalizeSearch(str){
   return normalizePersian(str).replace(/[\s\u200c]+/g,"");
-}
-
-/* ================= جستجوی تقریبی (مقاوم به غلط املایی ساده) ================= */
-// نرمال‌سازی «شل‌تر»: آ/أ/إ→ا ، ة→ه ، ؤ→و ، ئ→ی ، حذف همزه و علائم
-function looseNorm(s){
-  return normalizePersian(s)
-    .replace(/[\u0622\u0623\u0625\u0671]/g,"\u0627").replace(/\u0629/g,"\u0647")
-    .replace(/\u0624/g,"\u0648").replace(/\u0626/g,"\u06CC").replace(/\u0621/g,"")
-    .replace(/[^\u0621-\u064A\u0671-\u06D3a-z0-9 ]/g," ")
-    .replace(/ +/g," ").trim();
-}
-// فاصله‌ی ویرایشی (با جابه‌جایی دو حرف کنار هم) — اگه از max بیشتر بشه زود قطع می‌کنه
-function editDist(a,b,max){
-  var al=a.length, bl=b.length, i, j;
-  if(Math.abs(al-bl) > max) return max+1;
-  var prev2=null, prev=[], cur;
-  for(j=0;j<=bl;j++) prev[j]=j;
-  for(i=1;i<=al;i++){
-    cur=[i]; var rowMin=i;
-    for(j=1;j<=bl;j++){
-      var cost = a.charCodeAt(i-1)===b.charCodeAt(j-1) ? 0 : 1;
-      var v = Math.min(prev[j]+1, cur[j-1]+1, prev[j-1]+cost);
-      if(i>1 && j>1 && a.charCodeAt(i-1)===b.charCodeAt(j-2) && a.charCodeAt(i-2)===b.charCodeAt(j-1)) v = Math.min(v, prev2[j-2]+1);
-      cur[j]=v; if(v<rowMin) rowMin=v;
-    }
-    if(rowMin > max) return max+1;
-    prev2=prev; prev=cur;
-  }
-  return prev[bl];
-}
-// تعداد غلط مجاز: کلمه‌ی کوتاه ۰، تا ۵ حرف ۱، بلندتر ۲ ؛ کلمه‌های دارای عدد دقیق مقایسه می‌شن
-function wordDist(t, w){
-  if(w.indexOf(t) > -1) return 0;
-  var tol = /\d/.test(t) ? 0 : (t.length<=2 ? 0 : (t.length<=5 ? 1 : 2));
-  if(!tol) return -1;
-  var best = editDist(t, w, tol);
-  for(var L=t.length-1; L<=t.length+1; L++){      // مقایسه با ابتدای کلمه (برای تایپ نیمه‌کاره)
-    if(L<1 || L>=w.length) continue;
-    var d = editDist(t, w.slice(0,L), tol);
-    if(d < best) best = d;
-  }
-  return best<=tol ? best : -1;
-}
-function buildFuzzy(texts){
-  var vocab = {}, sets = texts.map(function(tx){
-    var ws = {}; looseNorm(tx).split(" ").forEach(function(w){ if(w){ ws[w]=1; vocab[w]=1; } });
-    return Object.keys(ws);
-  });
-  return { vocab:Object.keys(vocab), sets:sets };
-}
-// خروجی: [{i, score}] مرتب از نزدیک‌ترین
-function fuzzyFind(fz, rawTokens){
-  var tokens = looseNorm(rawTokens.join(" ")).split(" ").filter(Boolean);
-  if(!tokens.length) return [];
-  var cands = tokens.map(function(t){
-    var map = {}, n = 0;
-    for(var k=0;k<fz.vocab.length;k++){ var d = wordDist(t, fz.vocab[k]); if(d>=0){ map[fz.vocab[k]] = d; n++; } }
-    return n ? map : null;
-  });
-  for(var c=0;c<cands.length;c++) if(!cands[c]) return [];
-  var out = [];
-  for(var i=0;i<fz.sets.length;i++){
-    var words = fz.sets[i], score = 0, ok = true;
-    for(var q=0;q<cands.length && ok;q++){
-      var best = 99;
-      for(var w=0;w<words.length;w++){ var d2 = cands[q][words[w]]; if(d2!==undefined && d2<best) best = d2; }
-      if(best===99) ok = false; else score += best;
-    }
-    if(ok) out.push({ i:i, score:score });
-  }
-  out.sort(function(a,b){ return a.score - b.score || a.i - b.i; });
-  return out;
-}
-
-/* ================= تاریخچه‌ی جستجوهای اخیر (فقط روی همین دستگاه) ================= */
-function makeRecents(key, box, labelFn, onPick){
-  var MAX = 8;
-  function load(){
-    try{ var a = JSON.parse(localStorage.getItem(key) || "[]"); return Array.isArray(a) ? a.filter(function(x){ return typeof x==="string" && x; }) : []; }
-    catch(e){ return []; }
-  }
-  function save(a){ try{ localStorage.setItem(key, JSON.stringify(a)); }catch(e){} }
-  function render(){
-    var a = load();
-    if(!a.length){ box.innerHTML = ""; return; }
-    box.innerHTML = "<div class='recent'><div class='recent-head'><span>جستجوهای اخیر</span>"
-      + "<button type='button' class='recent-clear' data-act='clear'>پاک کردن همه</button></div><div class='recent-list'>"
-      + a.map(function(v,i){
-          return "<span class='recent-chip' style='--i:"+Math.min(i,8)+"'><button type='button' class='rc-text' data-act='pick' data-i='"+i+"'>"+labelFn(v)+"</button>"
-               + "<button type='button' class='rc-x' data-act='del' data-i='"+i+"' aria-label='حذف'>×</button></span>";
-        }).join("")
-      + "</div></div>";
-  }
-  box.addEventListener("click", function(e){
-    var b = e.target.closest("button[data-act]"); if(!b) return;
-    var a = load(), i = Number(b.dataset.i);
-    if(b.dataset.act === "clear"){ save([]); render(); }
-    else if(b.dataset.act === "del"){ a.splice(i,1); save(a); render(); }
-    else if(b.dataset.act === "pick" && a[i] !== undefined){ onPick(a[i]); }
-  });
-  return {
-    add: function(v){
-      v = String(v||"").trim(); if(!v) return;
-      var n = normalizeSearch(v);
-      var a = load().filter(function(x){ return normalizeSearch(x) !== n; });
-      a.unshift(v); save(a.slice(0, MAX));
-    },
-    // وقتی فیلد خالیه تاریخچه نشون داده می‌شه، وگرنه پنهون
-    sync: function(value){ if(String(value||"").trim()) box.innerHTML = ""; else render(); }
-  };
 }
 
 /* ================= روزهای هفته ================= */
@@ -1062,22 +918,9 @@ sheetContent.addEventListener("click", function(e){
 /* ================= تب جستجو ================= */
 var searchInput = document.getElementById("searchInput"), searchResults = document.getElementById("searchResults"), searchCount = document.getElementById("searchCount");
 var searchTimer = null;
-var searchFuzzy = null;
-function getSearchFuzzy(){
-  if(!searchFuzzy) searchFuzzy = buildFuzzy(COURSES.map(function(c){ return c.__search; }));
-  return searchFuzzy;
-}
-var recentSearch = makeRecents("usc_recent_search", document.getElementById("searchRecent"),
-  function(v){ return escapeHTML(v); },
-  function(v){ searchInput.value = v; recentSearch.sync(v); runSearch(); });
-recentSearch.sync("");
 searchInput.addEventListener("input", function(){
-  recentSearch.sync(searchInput.value);
   clearTimeout(searchTimer);
   searchTimer = setTimeout(runSearch, 150);
-});
-searchInput.addEventListener("keydown", function(e){
-  if(e.key === "Enter" && searchResults.querySelector(".course-card")){ recentSearch.add(searchInput.value); searchInput.blur(); }
 });
 function runSearch(){
   var tokens = normalizePersian(searchInput.value).split(" ").filter(Boolean);
@@ -1089,15 +932,7 @@ function runSearch(){
     for(var t=0;t<tokens.length;t++){ if(hay.indexOf(tokens[t]) === -1){ ok=false; break; } }
     if(ok){ matches.push(i); if(matches.length>=150) break; }
   }
-  var approx = false;
-  if(matches.length===0){
-    // نتیجه‌ی دقیقی نبود → جستجوی تقریبی (غلط املایی، همزه، ی/ک عربی و …)
-    var fr = fuzzyFind(getSearchFuzzy(), tokens);
-    if(fr.length){ approx = true; matches = fr.slice(0,150).map(function(r){ return r.i; }); }
-  }
-  searchCount.textContent = matches.length
-    ? (matches.length+(approx?" نتیجه‌ی نزدیک (با املای تقریبی)":" نتیجه")+(matches.length>=150?" (۱۵۰ مورد اول)":""))
-    : "";
+  searchCount.textContent = matches.length ? (matches.length+" نتیجه"+(matches.length>=150?" (۱۵۰ مورد اول)":"")) : "";
   if(matches.length===0){
     searchResults.innerHTML = "<div class='empty-state'>چیزی پیدا نشد — نام درس یا استاد دیگه‌ای رو امتحان کن.</div>";
     return;
@@ -1122,7 +957,6 @@ function runSearch(){
 }
 searchResults.addEventListener("click", function(e){
   var btn = e.target.closest(".course-card"); if(!btn) return;
-  recentSearch.add(searchInput.value);
   openSheetTransition(btn, courseDetailHTML(COURSES[Number(btn.dataset.idx)]));
 });
 
@@ -1256,23 +1090,6 @@ var PROF_ENTRIES = Object.keys(PROF_MAP).map(function(k){ return PROF_MAP[k]; })
   .concat(Object.keys(COURSE_MAP).map(function(k){ return COURSE_MAP[k]; }));
 PROF_ENTRIES.sort(function(a,b){ return a.name.localeCompare(b.name,"fa"); });
 
-var profFuzzy = null;
-function getProfFuzzy(){
-  if(!profFuzzy) profFuzzy = buildFuzzy(PROF_ENTRIES.map(function(en){ return en.hay; }));
-  return profFuzzy;
-}
-var recentProf = makeRecents("usc_recent_prof", document.getElementById("profRecent"),
-  function(v){
-    var p = v.indexOf("|"), kind = v.slice(0,p), name = v.slice(p+1);
-    return escapeHTML(name) + "<span class='rc-kind'>" + (kind==="prof" ? "استاد" : "درس") + "</span>";
-  },
-  function(v){
-    var p = v.indexOf("|"), kind = v.slice(0,p), name = v.slice(p+1);
-    for(var i=0;i<PROF_ENTRIES.length;i++){
-      if(PROF_ENTRIES[i].kind===kind && PROF_ENTRIES[i].name===name){ pickProfEntry(PROF_ENTRIES[i]); return; }
-    }
-  });
-recentProf.sync("");
 var profList = []; // نتایج فعلیِ لیست پیشنهاد
 function updateProfSuggest(){
   // جستجو کلمه‌به‌کلمه و مستقل از ترتیب (مثل تب جستجو)
@@ -1282,16 +1099,11 @@ function updateProfSuggest(){
     for(var i=0;i<tokens.length;i++){ if(en.hay.indexOf(tokens[i]) === -1) return false; }
     return true;
   });
-  if(found.length === 0){
-    // پیشنهاد دقیقی نبود → تقریبی (غلط املایی)
-    found = fuzzyFind(getProfFuzzy(), tokens).slice(0,30).map(function(r){ return PROF_ENTRIES[r.i]; });
-  } else {
-    // اونایی که با اولین کلمه شروع می‌شن بالاتر
-    found.sort(function(a,b){
-      var pa = a.hay.indexOf(tokens[0])===0 ? 0 : 1, pb = b.hay.indexOf(tokens[0])===0 ? 0 : 1;
-      return pa - pb;
-    });
-  }
+  // اونایی که با اولین کلمه شروع می‌شن بالاتر
+  found.sort(function(a,b){
+    var pa = a.hay.indexOf(tokens[0])===0 ? 0 : 1, pb = b.hay.indexOf(tokens[0])===0 ? 0 : 1;
+    return pa - pb;
+  });
   profList = found.slice(0,30);
   if(profList.length===0){ profSuggest.classList.remove("show"); return; }
   profSuggest.innerHTML = profList.map(function(en, i){
@@ -1304,7 +1116,6 @@ profInput.addEventListener("input", function(){
   if(!profInput.value.trim()){
     profResult.innerHTML = ""; profEmpty.style.display = "";
   }
-  recentProf.sync(profInput.value);
   updateProfSuggest();
 });
 profInput.addEventListener("keydown", function(e){
@@ -1398,8 +1209,6 @@ function buildScheduleHTML(sessions, mode){
 
 function pickProfEntry(en){
   profInput.value = en.name;
-  recentProf.add(en.kind + "|" + en.name);
-  recentProf.sync(en.name);
   profEmpty.style.display = "none";
   var idxSet = {};
   en.idxs.forEach(function(i){ idxSet[i] = true; });
@@ -1570,26 +1379,6 @@ document.getElementById("freeNowBtn").addEventListener("click", function(){
   freeEnd.value = String(endMark);
   showFreeRooms();
 });
-
-/* ================= نشانگر آفلاین ================= */
-(function(){
-  var bar = document.getElementById("netBar"), txt = document.getElementById("netText"), timer = null;
-  function setNet(online, initial){
-    clearTimeout(timer);
-    if(!online){
-      txt.textContent = "آفلاین هستی — اپ با اطلاعات ذخیره‌شده کار می‌کنه";
-      bar.classList.remove("online"); bar.classList.add("show");
-    } else {
-      if(initial){ bar.classList.remove("show"); return; }
-      txt.textContent = "دوباره آنلاین شدی";
-      bar.classList.add("online", "show");
-      timer = setTimeout(function(){ bar.classList.remove("show"); }, 2200);
-    }
-  }
-  window.addEventListener("offline", function(){ setNet(false); });
-  window.addEventListener("online", function(){ setNet(true); });
-  if(!navigator.onLine) setNet(false, true);
-})();
 
 /* ================= نصب اپ (Add to Home Screen) ================= */
 (function(){
