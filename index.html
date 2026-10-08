@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#12181a">
 <meta name="description" content="جستجوی دروس دانشگاه، بررسی وضعیت کلاس‌ها و پیدا کردن کلاس خالی">
-<title>USC Radar - رادار علموف</title>
+<title>رادار علموف</title>
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="icons/icon-192.png">
 <link rel="icon" href="icons/icon-192.png">
@@ -309,21 +309,20 @@ button.place-group-title{ border:0; background:none; width:100%; padding:0; font
 }
 .car-btn:disabled{ opacity:.3; cursor:default; }
 .car-count{ font-size:12.5px; color:var(--text-muted); font-weight:600; }
-/* افکت Book Flip برای سوییچ بین چند درس هم‌زمان */
-.car-flip-stage{ perspective:1300px; }
+/* افکت کشویی (Slide) برای سوییچ بین چند درس هم‌زمان */
+.car-flip-stage{ overflow:hidden; }
 .car-slide{
   position:relative;
-  transform-style:preserve-3d;
-  transform-origin:100% 50%; /* لولا/شیرازه‌ی کتاب روی لبه‌ی راست (هم‌سو با کتاب‌های فارسی) */
-  backface-visibility:hidden;
-  transition:transform .32s cubic-bezier(.45,.05,.35,1), opacity .32s ease;
+  transition:transform .24s cubic-bezier(.3,.7,.3,1), opacity .24s ease;
   opacity:1;
+  will-change:transform;
 }
-.car-slide.flip-leave-next{ transform:rotateY(-108deg); opacity:.25; }
-.car-slide.flip-leave-prev{ transform:rotateY(108deg); opacity:.25; }
-.car-slide.flip-enter-next{ transform:rotateY(96deg); opacity:.4; }
-.car-slide.flip-enter-prev{ transform:rotateY(-96deg); opacity:.4; }
-.car-slide.flip-settle{ transform:rotateY(0deg); opacity:1; }
+/* جهت راست‌به‌چپ: «بعدی» یعنی درس فعلی به چپ بیرون می‌ره و درس جدید از راست وارد می‌شه */
+.car-slide.flip-leave-next{ transform:translateX(-100%); opacity:0; }
+.car-slide.flip-leave-prev{ transform:translateX(100%); opacity:0; }
+.car-slide.flip-enter-next{ transform:translateX(100%); opacity:0; }
+.car-slide.flip-enter-prev{ transform:translateX(-100%); opacity:0; }
+.car-slide.flip-settle{ transform:translateX(0); opacity:1; }
 
 /* ---------- tab bar ---------- */
 .tabbar{
@@ -668,7 +667,7 @@ function moveMerged(delta){
     renderMergedCourse(dir);
   }
   oldSlide.addEventListener("transitionend", finishLeave, {once:true});
-  setTimeout(finishLeave, 260); // پشتیبان برای وقتی رویداد ترنزیشن فایر نمی‌شه
+  setTimeout(finishLeave, 300); // پشتیبان برای وقتی رویداد ترنزیشن فایر نمی‌شه
   oldSlide.classList.add(dir === "next" ? "flip-leave-next" : "flip-leave-prev");
 }
 /* ================= Shared Element Transition (کارت ↔ کشوی جزئیات) ================= */
