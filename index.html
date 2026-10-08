@@ -339,20 +339,14 @@ button.place-group-title{ border:0; background:none; width:100%; padding:0; font
 }
 .car-btn:disabled{ opacity:.3; cursor:default; }
 .car-count{ font-size:12.5px; color:var(--text-muted); font-weight:600; }
-/* افکت کشویی (Slide) برای سوییچ بین چند درس هم‌زمان */
-.car-flip-stage{ overflow:hidden; }
-.car-slide{
-  position:relative;
-  transition:transform .24s cubic-bezier(.3,.7,.3,1), opacity .24s ease;
-  opacity:1;
-  will-change:transform;
-}
-/* جهت راست‌به‌چپ: «بعدی» یعنی درس فعلی به چپ بیرون می‌ره و درس جدید از راست وارد می‌شه */
-.car-slide.flip-leave-next{ transform:translateX(-100%); opacity:0; }
-.car-slide.flip-leave-prev{ transform:translateX(100%); opacity:0; }
-.car-slide.flip-enter-next{ transform:translateX(100%); opacity:0; }
-.car-slide.flip-enter-prev{ transform:translateX(-100%); opacity:0; }
-.car-slide.flip-settle{ transform:translateX(0); opacity:1; }
+/* سوییچ بین چند درس هم‌زمان: درس قبلی و بعدی هم‌زمان می‌لغزن و ارتفاع کشو نرم تغییر می‌کنه */
+.car-flip-stage{ position:relative; overflow:hidden; touch-action:pan-y; }
+.car-slide{ position:relative; }
+.car-slide.leaving{ position:absolute; top:0; left:0; right:0; pointer-events:none; }
+.car-btn svg{ width:16px; height:16px; stroke:currentColor; fill:none; stroke-width:2.2; stroke-linecap:round; stroke-linejoin:round; }
+.car-btn{ transition:transform .15s ease, opacity .2s ease; }
+.car-btn:active:not(:disabled){ transform:scale(.88); }
+.car-count{ display:inline-block; }
 
 /* ---------- tab bar ---------- */
 .tabbar{
@@ -840,47 +834,66 @@ function openMergedSheet(idxs){
   renderMergedCourse();
   showSheetEl();
 }
-function renderMergedCourse(dir){
+// فلش‌ها با SVG کشیده می‌شن (نه کاراکتر متنی) تا توی راست‌به‌چپ آینه نشن:
+// دکمه‌ی سمت راست = درس قبلی و فلشش به راست؛ دکمه‌ی سمت چپ = درس بعدی و فلشش به چپ
+var CAR_ICON_R = "<svg viewBox='0 0 24 24'><path d='m9 6 6 6-6 6'/></svg>";
+var CAR_ICON_L = "<svg viewBox='0 0 24 24'><path d='m15 6-6 6 6 6'/></svg>";
+var carBusy = null;   // تابعی که انیمیشن در حال اجرا رو سریع تموم می‌کنه
+function carCountText(){ return (mergedState.pos+1)+" از "+mergedState.idxs.length+" درس هم‌زمان"; }
+function updateCarNav(){
+  var prevBtn = document.getElementById("carPrev"), nextBtn = document.getElementById("carNext"), cnt = document.getElementById("carCount");
+  if(prevBtn) prevBtn.disabled = mergedState.pos === 0;
+  if(nextBtn) nextBtn.disabled = mergedState.pos === mergedState.idxs.length-1;
+  if(cnt) cnt.textContent = carCountText();
+}
+function renderMergedCourse(){
   if(!mergedState) return;
-  var idxs = mergedState.idxs, pos = mergedState.pos;
-  var c = COURSES[idxs[pos]];
-  var nav = "<div class='carousel-nav'>"
-    + "<button class='car-btn' id='carPrev'"+(pos===0?" disabled":"")+" aria-label='درس قبلی'>›</button>"
-    + "<span class='car-count'>"+(pos+1)+" از "+idxs.length+" درس هم‌زمان</span>"
-    + "<button class='car-btn' id='carNext'"+(pos===idxs.length-1?" disabled":"")+" aria-label='درس بعدی'>‹</button>"
-    + "</div>";
-  var enterClass = dir === "next" ? "flip-enter-next" : dir === "prev" ? "flip-enter-prev" : "";
-  sheetContent.innerHTML = nav
-    + "<div class='car-flip-stage'><div class='car-slide"+(enterClass?" "+enterClass:"")+"' id='carSlide'>"
-    + courseDetailHTML(c) + "</div></div>";
-  var prevBtn = document.getElementById("carPrev"), nextBtn = document.getElementById("carNext");
-  if(prevBtn) prevBtn.addEventListener("click", function(){ moveMerged(-1); });
-  if(nextBtn) nextBtn.addEventListener("click", function(){ moveMerged(1); });
-  var newSlide = document.getElementById("carSlide");
-  if(newSlide && enterClass){
-    void newSlide.offsetWidth; // فورس ریفلو تا ترنزیشن از حالت چرخیده‌ی اولیه واقعاً اجرا بشه
-    requestAnimationFrame(function(){
-      newSlide.classList.remove(enterClass);
-      newSlide.classList.add("flip-settle");
-    });
-  }
+  carBusy = null;
+  var c = COURSES[mergedState.idxs[mergedState.pos]];
+  sheetContent.innerHTML = "<div class='carousel-nav'>"
+    + "<button class='car-btn' id='carPrev' aria-label='درس قبلی'>"+CAR_ICON_R+"</button>"
+    + "<span class='car-count' id='carCount'></span>"
+    + "<button class='car-btn' id='carNext' aria-label='درس بعدی'>"+CAR_ICON_L+"</button>"
+    + "</div>"
+    + "<div class='car-flip-stage' id='carStage'><div class='car-slide' id='carSlide'>"+courseDetailHTML(c)+"</div></div>";
+  document.getElementById("carPrev").addEventListener("click", function(){ moveMerged(-1); });
+  document.getElementById("carNext").addEventListener("click", function(){ moveMerged(1); });
+  updateCarNav();
 }
 function moveMerged(delta){
   if(!mergedState) return;
+  if(carBusy) carBusy();                       // کلیک پشت‌سرهم: اول انیمیشن قبلی تموم می‌شه، بعد این یکی
   var next = mergedState.pos + delta;
   if(next<0 || next>=mergedState.idxs.length) return;
-  var dir = delta > 0 ? "next" : "prev";
-  var oldSlide = document.getElementById("carSlide");
   mergedState.pos = next;
-  if(!oldSlide){ renderMergedCourse(); return; }
+  updateCarNav();
+  var stage = document.getElementById("carStage"), old = document.getElementById("carSlide");
+  var fresh = document.createElement("div");
+  fresh.className = "car-slide"; fresh.id = "carSlide";
+  fresh.innerHTML = courseDetailHTML(COURSES[mergedState.idxs[next]]);
+  if(!stage || !old || !stage.animate){ renderMergedCourse(); return; }
+  // RTL: «بعدی» = درس فعلی به چپ می‌ره و درس جدید از راست میاد
+  var dir = delta > 0 ? -1 : 1, travel = 28;
+  var fromH = stage.offsetHeight;
+  old.removeAttribute("id"); old.classList.add("leaving");
+  stage.appendChild(fresh);
+  var toH = fresh.offsetHeight;
+  var reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  var dur = reduce ? 0 : 280, ease = "cubic-bezier(.25,.8,.25,1)", anims = [];
+  stage.style.height = fromH+"px";
+  anims.push(old.animate([{ transform:"translateX(0)", opacity:1 }, { transform:"translateX("+(dir*travel)+"%)", opacity:0 }], { duration:dur*0.8, easing:ease, fill:"forwards" }));
+  anims.push(fresh.animate([{ transform:"translateX("+(-dir*travel)+"%)", opacity:0 }, { transform:"translateX(0)", opacity:1 }], { duration:dur, easing:ease, fill:"backwards" }));
+  anims.push(stage.animate([{ height:fromH+"px" }, { height:toH+"px" }], { duration:dur, easing:ease }));
   var done = false;
-  function finishLeave(){
-    if(done) return; done = true;
-    renderMergedCourse(dir);
+  function finish(){
+    if(done) return; done = true; carBusy = null;
+    anims.forEach(function(a){ try{ a.cancel(); }catch(e){} });
+    if(old.parentNode) old.parentNode.removeChild(old);
+    stage.style.height = "";
   }
-  oldSlide.addEventListener("transitionend", finishLeave, {once:true});
-  setTimeout(finishLeave, 300); // پشتیبان برای وقتی رویداد ترنزیشن فایر نمی‌شه
-  oldSlide.classList.add(dir === "next" ? "flip-leave-next" : "flip-leave-prev");
+  carBusy = finish;
+  anims[2].onfinish = finish;
+  setTimeout(finish, dur + 120);               // پشتیبان
 }
 /* ================= Shared Element Transition (کارت ↔ کشوی جزئیات) ================= */
 // از View Transitions API استفاده می‌کنیم: به کارت/بلاکی که کلیک شده و به بات‌شیت
@@ -948,13 +961,16 @@ function closeSheetTransition(){
 }
 
 // سوایپ روی بات‌شیت برای رفتن به درس هم‌زمان بعدی/قبلی
-var touchStartX = null;
-sheet.addEventListener("touchstart", function(e){ touchStartX = e.touches[0].clientX; }, {passive:true});
+var touchStartX = null, touchStartY = null;
+sheet.addEventListener("touchstart", function(e){
+  if(e.touches.length !== 1){ touchStartX = null; return; }
+  touchStartX = e.touches[0].clientX; touchStartY = e.touches[0].clientY;
+}, {passive:true});
 sheet.addEventListener("touchend", function(e){
   if(touchStartX===null || !mergedState){ touchStartX=null; return; }
-  var dx = e.changedTouches[0].clientX - touchStartX;
+  var dx = e.changedTouches[0].clientX - touchStartX, dy = e.changedTouches[0].clientY - touchStartY;
   touchStartX = null;
-  if(Math.abs(dx) < 40) return;
+  if(Math.abs(dx) < 50 || Math.abs(dx) < Math.abs(dy)*1.5) return;   // اسکرول عمودی با سوایپ اشتباه گرفته نشه
   if(dx < 0) moveMerged(1); else moveMerged(-1);
 }, {passive:true});
 // کلیک روی کارت‌های داخل خودِ بات‌شیت (مثلاً از نتایج جستجو که داخل شیت باز شدن) هم جزئیات کامل رو باز کنه
@@ -1011,13 +1027,25 @@ searchResults.addEventListener("click", function(e){
 /* ================= تب وضعیت کلاس ================= */
 var roomInput = document.getElementById("roomInput"), roomSuggest = document.getElementById("roomSuggest");
 var roomEmpty = document.getElementById("roomEmpty"), roomResult = document.getElementById("roomResult");
+var roomList = []; // نتایج فعلیِ لیست پیشنهاد
 roomInput.addEventListener("input", function(){
   var q = normalizeSearch(roomInput.value);
-  if(!q){ roomSuggest.classList.remove("show"); return; }
-  var list = ALL_PLACES.filter(function(p){ return normalizeSearch(p).indexOf(q) > -1; }).slice(0,25);
-  if(list.length===0){ roomSuggest.classList.remove("show"); return; }
-  roomSuggest.innerHTML = list.map(function(p, i){ return "<button data-place='"+escapeHTML(p)+"' style='--i:"+Math.min(i,8)+"'>"+escapeHTML(p)+"</button>"; }).join("");
+  if(!q){ roomSuggest.classList.remove("show"); roomList = []; return; }
+  roomList = ALL_PLACES.filter(function(p){ return normalizeSearch(p).indexOf(q) > -1; }).slice(0,25);
+  if(roomList.length===0){ roomSuggest.classList.remove("show"); return; }
+  roomSuggest.innerHTML = roomList.map(function(p, i){ return "<button data-place='"+escapeHTML(p)+"' style='--i:"+Math.min(i,8)+"'>"+escapeHTML(p)+"</button>"; }).join("");
   roomSuggest.classList.add("show");
+});
+// اینتر = انتخاب اولین گزینه‌ی لیست (مثل تب درس/استاد)
+roomInput.addEventListener("keydown", function(e){
+  if(e.key === "Enter" && roomList.length){
+    e.preventDefault();
+    var place = roomList[0];
+    roomInput.value = place;
+    selectRoom(place);
+    roomSuggest.classList.remove("show");
+    roomInput.blur();
+  }
 });
 roomSuggest.addEventListener("click", function(e){
   var btn = e.target.closest("button"); if(!btn) return;
