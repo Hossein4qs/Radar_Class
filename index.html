@@ -1523,7 +1523,8 @@ function showFreeRooms(){
     if(!buckets[key]){ buckets[key]=[]; order.push(key); }
     buckets[key].push(o);
   });
-  function byNum(a,b){ return (roomNumber(b.place)||0)-(roomNumber(a.place)||0); }
+  // داخل هر طبقه: اول کلاس‌های خالی، بعد «به‌زودی خالی»ها؛ هر گروه از شماره‌ی بزرگ به کوچیک
+  function byNum(a,b){ return (a.soon?1:0)-(b.soon?1:0) || (roomNumber(b.place)||0)-(roomNumber(a.place)||0); }
   // از بزرگ به کوچیک: هم ترتیب دسته‌ها، هم مکان‌ها داخل هر دسته
   order.forEach(function(key){ buckets[key].sort(byNum); });
   negativeList.sort(byNum);
