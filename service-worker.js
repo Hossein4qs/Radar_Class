@@ -1,6 +1,6 @@
 // نسخه‌ی کش رو هر بار که فایل‌ها رو آپدیت می‌کنی (مخصوصاً database.js) عوض کن
 // تا کاربرهایی که اپ رو نصب کردن نسخه‌ی جدید رو بگیرن.
-var CACHE_NAME = "course-app-v5.1";
+var CACHE_NAME = "course-app-v5.2";
 var APP_SHELL = [
   "./",
   "./index.html",
