@@ -111,10 +111,6 @@ main{ flex:1; padding:2px 14px calc(84px + var(--safe-b)); }
   animation:cardRise .55s cubic-bezier(.2,.85,.25,1) backwards;
   animation-delay:calc(var(--i,0) * 55ms);
 }
-@media (prefers-reduced-motion: reduce){
-  .card-list .course-card{ animation:none; transition:none; }
-  .card-list .course-card:active{ transform:none; }
-}
 .course-card .title{ font-weight:700; font-size:15px; }
 .course-card .meta{ color:var(--text-muted); font-size:13px; margin-top:3px; }
 .course-card .row2{ display:flex; align-items:center; justify-content:space-between; margin-top:8px; gap:8px;}
@@ -144,9 +140,6 @@ main{ flex:1; padding:2px 14px calc(84px + var(--safe-b)); }
   0%  { opacity:0; transform:scale(.88,.6) translateY(-6px); }
   100%{ opacity:1; transform:scale(1) translateY(0); }
 }
-@media (prefers-reduced-motion: reduce){
-  .suggest-list.show{ animation:none; }
-}
 .suggest-list button{
   display:block; width:100%; text-align:right; padding:10px 14px; border:0; background:none;
   border-bottom:1px solid var(--border); cursor:pointer; color:var(--text);
@@ -175,11 +168,6 @@ main{ flex:1; padding:2px 14px calc(84px + var(--safe-b)); }
 }
 .suggest-list button:active{ transform:scale(.96,1.08); transition-duration:.12s; transition-timing-function:ease-out; }
 .suggest-list button.rb-pop{ animation:rubberBand .5s ease-out; animation-delay:0s; }
-@media (prefers-reduced-motion: reduce){
-  .suggest-list button{ animation:none; transition:none; }
-  .suggest-list button:active{ transform:none; }
-  .suggest-list button.rb-pop{ animation:none; }
-}
 
 .legend{ display:flex; gap:16px; margin:16px 2px 4px; font-size:12.5px; color:var(--text-muted); }
 .legend span{ display:inline-flex; align-items:center; gap:6px; }
@@ -264,9 +252,6 @@ main{ flex:1; padding:2px 14px calc(84px + var(--safe-b)); }
 }
 .go-btn::before{ background:color-mix(in srgb, var(--free) 72%, #000); }
 .go-btn:active::before{ opacity:1; transition-duration:.12s; }
-@media (prefers-reduced-motion: reduce){
-  .day-chip, .day-chip::before, .now-btn, .now-btn::before, .go-btn::before{ transition:none; }
-}
 .place-group{ margin-top:16px; }
 .place-group-title{ font-size:12.5px; font-weight:700; color:var(--text-muted); margin:0 2px 8px; }
 button.place-group-title{ border:0; background:none; width:100%; padding:0; font-family:inherit; cursor:pointer; display:flex; align-items:center; justify-content:space-between; }
@@ -379,39 +364,54 @@ button.place-group-title{ border:0; background:none; width:100%; padding:0; font
 /* ---------- نصب اپ ---------- */
 .top-actions{ display:flex; align-items:center; gap:8px; }
 .install-btn{
+  position:relative; white-space:nowrap;
   height:38px; padding:0 14px; border-radius:99px; border:1px solid var(--free);
   background:var(--free-soft); color:var(--free); font-weight:700; font-size:13px; cursor:pointer;
   display:inline-flex; align-items:center; gap:6px;
-}
-.install-btn[hidden]{ display:none; }
-.install-btn svg{ width:16px; height:16px; stroke:currentColor; }
-/* انیمیشن دکمه‌ی نصب: ورود با پرش فنری + حلقه‌ی نبض + فلش که بالا‌پایین می‌ره */
-.install-btn{
-  position:relative;
+  transition:background .35s ease, color .35s ease, transform .15s ease;
   animation:installIn .6s cubic-bezier(.34,1.8,.5,1) backwards;
 }
+.install-btn[hidden]{ display:none; }
+.install-btn:active{ transform:scale(.94); }
+.install-btn .ic{ position:relative; width:16px; height:16px; flex:none; }
+.install-btn .ic svg{ position:absolute; inset:0; width:16px; height:16px; stroke:currentColor; }
+.install-btn .ic-arrow{ animation:installArrow 1.4s ease-in-out 1s infinite; }
+.install-btn .ic-check{ transform:scale(.4); opacity:0; }
+.install-btn .ic-check path{ stroke-dasharray:24; stroke-dashoffset:24; }
+/* حلقه‌ی نبض (ملایم و کم‌فضا) */
 .install-btn::after{
   content:""; position:absolute; inset:-1px; border-radius:inherit;
   border:2px solid var(--free); opacity:0; pointer-events:none;
-  animation:installPulse 2.2s ease-out 1s infinite;
+  animation:installPulse 2.4s ease-out 1s infinite;
 }
-.install-btn svg{ animation:installArrow 1.4s ease-in-out 1s infinite; }
-.install-btn:active{ transform:scale(.94); }
+/* بعد از نصب: فلش → تیک می‌شه، بعد دکمه محو و جمع می‌شه */
+.install-btn.done{ background:var(--free); color:#fff; animation:installPop .5s cubic-bezier(.34,1.8,.5,1); }
+.install-btn.done::after{ animation:none; opacity:0; }
+.install-btn.done .ic-arrow{ animation:none; opacity:0; transform:scale(0) rotate(-90deg); }
+.install-btn.done .ic-check{ opacity:1; transform:none; transition:transform .3s ease, opacity .2s ease; }
+.install-btn.done .ic-check path{ animation:installCheck .45s ease .12s forwards; }
+.install-btn.leaving{
+  overflow:hidden; opacity:0; padding-inline:0; margin-inline-end:-8px; border-width:0; transform:scale(.85);
+  transition:opacity .45s ease, max-width .5s ease, padding .5s ease, margin .5s ease, border-width .5s ease, transform .45s ease;
+}
 @keyframes installIn{
   0%  { opacity:0; transform:translateX(-14px) scale(.6); }
   100%{ opacity:1; transform:none; }
 }
 @keyframes installPulse{
-  0%  { opacity:.55; transform:scale(1); }
-  70%,100%{ opacity:0; transform:scale(1.35,1.6); }
+  0%  { opacity:.35; transform:scale(1); }
+  70%,100%{ opacity:0; transform:scale(1.12,1.28); }
 }
 @keyframes installArrow{
   0%,100%{ transform:translateY(-1.5px); }
   50%    { transform:translateY(2.5px); }
 }
-@media (prefers-reduced-motion: reduce){
-  .install-btn, .install-btn::after, .install-btn svg{ animation:none; }
+@keyframes installPop{
+  0%  { transform:scale(.9); }
+  60% { transform:scale(1.12); }
+  100%{ transform:scale(1); }
 }
+@keyframes installCheck{ to{ stroke-dashoffset:0; } }
 .ios-hint{
   position:fixed; inset-inline:12px; bottom:calc(12px + var(--safe-b)); z-index:60;
   max-width:536px; margin:0 auto; background:var(--surface); border:1px solid var(--border);
@@ -425,21 +425,46 @@ button.place-group-title{ border:0; background:none; width:100%; padding:0; font
   margin-top:12px; width:100%; padding:10px; border-radius:var(--radius-sm);
   border:1px solid var(--border); background:var(--surface-2); cursor:pointer; font-weight:600;
 }
+
+/* ---------- انیمیشن تغییر تم ---------- */
+/* مرورگرهای جدید: دایره‌ای از محل دکمه باز می‌شه و تم تازه رو روی صفحه می‌کشه */
+html.theme-vt::view-transition-old(root),
+html.theme-vt::view-transition-new(root){ animation:none; mix-blend-mode:normal; }
+html.theme-vt::view-transition-old(root){ z-index:1; }
+html.theme-vt::view-transition-new(root){ z-index:2; }
+/* بقیه‌ی مرورگرها: تغییر نرم رنگ‌ها */
+html.theme-fade, html.theme-fade *{
+  transition:background-color .5s ease, color .5s ease, border-color .5s ease, box-shadow .5s ease !important;
+}
+/* آیکون دکمه‌ی تم: ماه (تم روشن) ⇄ خورشید (تم تیره) با چرخش و کوچیک/بزرگ شدن */
+.theme-btn{ position:relative; }
+.theme-btn svg{
+  position:absolute; inset:0; margin:auto;
+  transition:transform .55s cubic-bezier(.34,1.4,.5,1), opacity .35s ease;
+}
+.theme-btn .ico-moon{ opacity:1; transform:rotate(0) scale(1); }
+.theme-btn .ico-sun { opacity:0; transform:rotate(-90deg) scale(.4); }
+.theme-btn.is-dark .ico-moon{ opacity:0; transform:rotate(90deg) scale(.4); }
+.theme-btn.is-dark .ico-sun { opacity:1; transform:rotate(0) scale(1); }
 </style>
 </head>
 <body>
 <div class="app">
 
   <header class="topbar">
-    <h1>دروس دانشگاه</h1>
+    <h1>USC Radar</h1>
     <div class="top-actions">
       <button class="install-btn" id="installBtn" type="button" hidden>
-        <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11"/><path d="m7 11 5 5 5-5"/><path d="M5 20h14"/></svg>
-        <span>نصب اپ</span>
+        <span class="ic">
+          <svg class="ic-arrow" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11"/><path d="m7 11 5 5 5-5"/><path d="M5 20h14"/></svg>
+          <svg class="ic-check" viewBox="0 0 24 24" fill="none" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg>
+        </span>
+        <span class="lbl">نصب اپ</span>
       </button>
       <button class="theme-btn" id="themeBtn" aria-label="تغییر پوسته">
-      <svg viewBox="0 0 24 24" fill="none" stroke-width="1.7" stroke-linecap="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z"/></svg>
-    </button>
+        <svg class="ico-moon" viewBox="0 0 24 24" fill="none" stroke-width="1.7" stroke-linecap="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z"/></svg>
+        <svg class="ico-sun" viewBox="0 0 24 24" fill="none" stroke-width="1.7" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2.5v2M12 19.5v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2.5 12h2M19.5 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
+      </button>
     </div>
   </header>
 
@@ -638,18 +663,88 @@ tabs.forEach(function(btn){
   btn.addEventListener("click", function(){ activateTab(btn.dataset.view); });
 });
 
+/* سوایپ چپ/راست روی صفحه برای رفتن بین تب‌ها (RTL: کشیدن به راست = تب بعدی)
+   روی جدول برنامه، فیلدهای ورودی، بات‌شیت و هر ناحیه‌ی افقی‌اسکرول کار نمی‌کنه */
+var swipeStart = null;
+function swipeBlocked(el){
+  if(!el || el.nodeType !== 1) return true;
+  if(el.closest("input,select,textarea,.grid-wrap,.sched,.sheet,.sheet-backdrop,.ios-hint,.suggest-list,.tabbar")) return true;
+  if(sheet.classList.contains("show")) return true;
+  while(el && el !== document.body){
+    var cs = getComputedStyle(el);
+    if(/(auto|scroll)/.test(cs.overflowX) && el.scrollWidth > el.clientWidth + 1) return true;
+    el = el.parentElement;
+  }
+  return false;
+}
+document.addEventListener("touchstart", function(e){
+  swipeStart = null;
+  if(e.touches.length !== 1) return;
+  var t = e.touches[0];
+  if(t.clientX < 24 || t.clientX > window.innerWidth - 24) return; // لبه‌ها برای ژست برگشت سیستم
+  if(swipeBlocked(e.target)) return;
+  swipeStart = { x:t.clientX, y:t.clientY };
+}, {passive:true});
+document.addEventListener("touchend", function(e){
+  if(!swipeStart) return;
+  var t = e.changedTouches[0];
+  var dx = t.clientX - swipeStart.x, dy = t.clientY - swipeStart.y;
+  swipeStart = null;
+  if(Math.abs(dx) < 60 || Math.abs(dx) < Math.abs(dy) * 1.5) return;
+  var selTab = document.querySelector(".tab.sel");
+  var cur = selTab ? TAB_ORDER.indexOf(selTab.dataset.view) : -1;
+  if(cur === -1) return;
+  var next = cur + (dx > 0 ? 1 : -1);
+  if(next < 0 || next >= TAB_ORDER.length) return;
+  activateTab(TAB_ORDER[next]);
+  window.scrollTo(0,0);
+}, {passive:true});
+document.addEventListener("touchcancel", function(){ swipeStart = null; }, {passive:true});
+
 /* ================= تم روشن/تیره ================= */
 var themeBtn = document.getElementById("themeBtn");
+var themeBusy = false;
+function syncThemeIcon(){
+  var cur = document.documentElement.getAttribute("data-theme");
+  var dark = cur ? cur==="dark" : window.matchMedia("(prefers-color-scheme: dark)").matches;
+  themeBtn.classList.toggle("is-dark", dark);
+}
 try{
   var savedTheme = localStorage.getItem("theme");
   if(savedTheme) document.documentElement.setAttribute("data-theme", savedTheme);
 }catch(e){}
+syncThemeIcon();
+try{ window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", syncThemeIcon); }catch(e){}
 themeBtn.addEventListener("click", function(){
-  var cur = document.documentElement.getAttribute("data-theme");
+  var root = document.documentElement;
+  var cur = root.getAttribute("data-theme");
   var isDark = cur ? cur==="dark" : window.matchMedia("(prefers-color-scheme: dark)").matches;
   var next = isDark ? "light" : "dark";
-  document.documentElement.setAttribute("data-theme", next);
-  try{ localStorage.setItem("theme", next); }catch(e){}
+  function apply(){
+    root.setAttribute("data-theme", next);
+    try{ localStorage.setItem("theme", next); }catch(e){}
+    syncThemeIcon();
+  }
+  if(themeBusy) { apply(); return; }
+  if(document.startViewTransition){
+    themeBusy = true;
+    var r = themeBtn.getBoundingClientRect();
+    var x = r.left + r.width/2, y = r.top + r.height/2;
+    var endR = Math.hypot(Math.max(x, window.innerWidth - x), Math.max(y, window.innerHeight - y));
+    root.classList.add("theme-vt");
+    var vt = document.startViewTransition(apply);
+    vt.ready.then(function(){
+      root.animate(
+        { clipPath:["circle(0px at "+x+"px "+y+"px)", "circle("+endR+"px at "+x+"px "+y+"px)"] },
+        { duration:700, easing:"cubic-bezier(.4,0,.2,1)", pseudoElement:"::view-transition-new(root)" }
+      );
+    }).catch(function(){});
+    vt.finished.finally(function(){ root.classList.remove("theme-vt"); themeBusy = false; });
+  } else {
+    root.classList.add("theme-fade");
+    apply();
+    setTimeout(function(){ root.classList.remove("theme-fade"); }, 550);
+  }
 });
 
 /* ================= بات‌شیت جزئیات ================= */
@@ -1289,37 +1384,56 @@ document.getElementById("freeNowBtn").addEventListener("click", function(){
 (function(){
   var installBtn = document.getElementById("installBtn");
   var iosHint = document.getElementById("iosHint");
-  var deferredPrompt = null;
+  var deferredPrompt = null, celebrated = false;
   var isStandalone = function(){
     return window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone === true;
   };
   var isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent) ||
               (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
 
-  // اندروید/کروم/اج: مرورگر وقتی اپ قابل نصب باشه این رویداد رو می‌فرسته
+  // بعد از نصب موفق: دکمه پاپ می‌زنه، فلش تیک می‌شه، بعد محو و جمع می‌شه
+  function celebrate(){
+    if(celebrated) return;
+    celebrated = true;
+    deferredPrompt = null;
+    iosHint.hidden = true;
+    installBtn.hidden = false;
+    installBtn.classList.add("done");
+    installBtn.querySelector(".lbl").textContent = "نصب شد";
+    setTimeout(function(){
+      installBtn.style.maxWidth = installBtn.offsetWidth + "px";
+      void installBtn.offsetWidth;
+      installBtn.classList.add("leaving");
+      installBtn.style.maxWidth = "0px";
+      setTimeout(function(){ installBtn.hidden = true; }, 600);
+    }, 1500);
+  }
+
+  // اندروید/دسکتاپ (کروم/اج): مرورگر وقتی اپ قابل نصب باشه این رویداد رو می‌فرسته
   window.addEventListener("beforeinstallprompt", function(e){
     e.preventDefault();
     deferredPrompt = e;
-    if(!isStandalone()) installBtn.hidden = false;
+    if(!isStandalone() && !celebrated) installBtn.hidden = false;
   });
   // iOS رویداد نصب نداره → دکمه رو نشون می‌دیم و راهنما باز می‌شه
   if(isIOS && !isStandalone()) installBtn.hidden = false;
 
   installBtn.addEventListener("click", function(){
+    if(celebrated) return;
     if(deferredPrompt){
-      deferredPrompt.prompt();
-      deferredPrompt.userChoice.then(function(){
-        deferredPrompt = null;
-        installBtn.hidden = true;
+      var p = deferredPrompt;
+      deferredPrompt = null;
+      p.prompt();
+      p.userChoice.then(function(choice){
+        if(choice && choice.outcome === "accepted") celebrate();
+        else installBtn.hidden = true;
       });
     } else if(isIOS){
       iosHint.hidden = false;
     }
   });
   document.getElementById("iosClose").addEventListener("click", function(){ iosHint.hidden = true; });
-  window.addEventListener("appinstalled", function(){
-    deferredPrompt = null; installBtn.hidden = true; iosHint.hidden = true;
-  });
+  window.addEventListener("appinstalled", celebrate);
 })();
 
 /* ================= سرویس‌ورکر ================= */
