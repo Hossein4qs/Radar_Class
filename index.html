@@ -1067,16 +1067,17 @@ function selectRoom(place){
     return;
   }
   // هر ردیف = یه روز هفته (شنبه تا پنج‌شنبه؛ جمعه فقط اگه کلاسی داشته باشه)
+  // همیشه شنبه تا پنج‌شنبه (حتی بدون کلاس)؛ جمعه فقط اگه کلاسی داشته باشه
   var daysShown = DAY_KEYS.filter(function(d){
     return d !== "جمعه" || sessions.some(function(s){ return s.day === d; });
   });
 
   // هر ستون = یه ساعت
-  var minStart = Math.min.apply(null, sessions.map(function(s){return s.start;}));
-  var maxEnd   = Math.max.apply(null, sessions.map(function(s){return s.end;}));
-  minStart = Math.floor(minStart/60)*60; if(minStart<0) minStart=0;
+  // همیشه از ۸:۰۰ تا ۱۹:۰۰؛ فقط اگه جلسه‌ای بیرون این بازه باشه، به‌اندازه‌ی همون بزرگ‌تر می‌شه
+  var minStart = Math.min.apply(null, [8*60].concat(sessions.map(function(s){return s.start;})));
+  var maxEnd   = Math.max.apply(null, [19*60].concat(sessions.map(function(s){return s.end;})));
+  minStart = Math.max(0, Math.floor(minStart/60)*60);
   maxEnd   = Math.ceil(maxEnd/60)*60;
-  if(maxEnd - minStart < 180){ maxEnd = minStart + 180; }
   var span = maxEnd - minStart;
   var hrs = Math.max(1, Math.round(span/60));
   var pxPerHour = 78;
@@ -1219,14 +1220,15 @@ function uniq(arr){ var seen = {}, out = []; arr.forEach(function(x){ if(x && !s
 // (مثلاً چند گروه یه درس سر یه ساعت توی کلاس‌های مختلف) زیر هم (در چند «لاین») نشون داده می‌شن
 function buildScheduleHTML(sessions, mode){
   var ROW_H = 78, EMPTY_H = 46;
+  // همیشه شنبه تا پنج‌شنبه (حتی بدون کلاس)؛ جمعه فقط اگه کلاسی داشته باشه
   var daysShown = DAY_KEYS.filter(function(d){
     return d !== "جمعه" || sessions.some(function(s){ return s.day === d; });
   });
-  var minStart = Math.min.apply(null, sessions.map(function(s){return s.start;}));
-  var maxEnd   = Math.max.apply(null, sessions.map(function(s){return s.end;}));
-  minStart = Math.floor(minStart/60)*60; if(minStart<0) minStart=0;
+  // همیشه از ۸:۰۰ تا ۱۹:۰۰؛ فقط اگه جلسه‌ای بیرون این بازه باشه، به‌اندازه‌ی همون بزرگ‌تر می‌شه
+  var minStart = Math.min.apply(null, [8*60].concat(sessions.map(function(s){return s.start;})));
+  var maxEnd   = Math.max.apply(null, [19*60].concat(sessions.map(function(s){return s.end;})));
+  minStart = Math.max(0, Math.floor(minStart/60)*60);
   maxEnd   = Math.ceil(maxEnd/60)*60;
-  if(maxEnd - minStart < 180){ maxEnd = minStart + 180; }
   var span = maxEnd - minStart;
   var hrs = Math.max(1, Math.round(span/60));
   var trackW = hrs * 78;
