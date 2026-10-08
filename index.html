@@ -5,10 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#12181a">
 <meta name="description" content="جستجوی دروس دانشگاه، بررسی وضعیت کلاس‌ها و پیدا کردن کلاس خالی">
-<title>USC Radar - رادار علموف</title>
+<title>USC Radar</title>
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="دروس">
+<meta name="apple-mobile-web-app-title" content="USC Radar">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="icons/icon-192.png">
@@ -385,6 +385,33 @@ button.place-group-title{ border:0; background:none; width:100%; padding:0; font
 }
 .install-btn[hidden]{ display:none; }
 .install-btn svg{ width:16px; height:16px; stroke:currentColor; }
+/* انیمیشن دکمه‌ی نصب: ورود با پرش فنری + حلقه‌ی نبض + فلش که بالا‌پایین می‌ره */
+.install-btn{
+  position:relative;
+  animation:installIn .6s cubic-bezier(.34,1.8,.5,1) backwards;
+}
+.install-btn::after{
+  content:""; position:absolute; inset:-1px; border-radius:inherit;
+  border:2px solid var(--free); opacity:0; pointer-events:none;
+  animation:installPulse 2.2s ease-out 1s infinite;
+}
+.install-btn svg{ animation:installArrow 1.4s ease-in-out 1s infinite; }
+.install-btn:active{ transform:scale(.94); }
+@keyframes installIn{
+  0%  { opacity:0; transform:translateX(-14px) scale(.6); }
+  100%{ opacity:1; transform:none; }
+}
+@keyframes installPulse{
+  0%  { opacity:.55; transform:scale(1); }
+  70%,100%{ opacity:0; transform:scale(1.35,1.6); }
+}
+@keyframes installArrow{
+  0%,100%{ transform:translateY(-1.5px); }
+  50%    { transform:translateY(2.5px); }
+}
+@media (prefers-reduced-motion: reduce){
+  .install-btn, .install-btn::after, .install-btn svg{ animation:none; }
+}
 .ios-hint{
   position:fixed; inset-inline:12px; bottom:calc(12px + var(--safe-b)); z-index:60;
   max-width:536px; margin:0 auto; background:var(--surface); border:1px solid var(--border);

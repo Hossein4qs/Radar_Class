@@ -1,6 +1,6 @@
 {
-  "name": "رادار علموف",
-  "short_name": "دروس",
+  "name": "USC Radar",
+  "short_name": "USC Radar",
   "description": "جستجوی دروس دانشگاه، وضعیت کلاس‌ها و پیدا کردن کلاس خالی",
   "id": "./index.html",
   "start_url": "./index.html",
