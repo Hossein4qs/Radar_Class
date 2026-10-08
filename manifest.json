@@ -2,6 +2,7 @@
   "name": "رادار علموف",
   "short_name": "دروس",
   "description": "جستجوی دروس دانشگاه، وضعیت کلاس‌ها و پیدا کردن کلاس خالی",
+  "id": "./index.html",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",

@@ -6,6 +6,10 @@
 <meta name="theme-color" content="#12181a">
 <meta name="description" content="جستجوی دروس دانشگاه، بررسی وضعیت کلاس‌ها و پیدا کردن کلاس خالی">
 <title>USC Radar - رادار علموف</title>
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="دروس">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="icons/icon-192.png">
 <link rel="icon" href="icons/icon-192.png">
@@ -371,6 +375,29 @@ button.place-group-title{ border:0; background:none; width:100%; padding:0; font
 @media (min-width:600px){
   .app{ border-inline:1px solid var(--border); }
 }
+
+/* ---------- نصب اپ ---------- */
+.top-actions{ display:flex; align-items:center; gap:8px; }
+.install-btn{
+  height:38px; padding:0 14px; border-radius:99px; border:1px solid var(--free);
+  background:var(--free-soft); color:var(--free); font-weight:700; font-size:13px; cursor:pointer;
+  display:inline-flex; align-items:center; gap:6px;
+}
+.install-btn[hidden]{ display:none; }
+.install-btn svg{ width:16px; height:16px; stroke:currentColor; }
+.ios-hint{
+  position:fixed; inset-inline:12px; bottom:calc(12px + var(--safe-b)); z-index:60;
+  max-width:536px; margin:0 auto; background:var(--surface); border:1px solid var(--border);
+  border-radius:var(--radius); padding:16px 16px 14px; box-shadow:0 12px 36px var(--shadow);
+  animation:fade .2s ease;
+}
+.ios-hint[hidden]{ display:none; }
+.ios-hint b{ display:block; font-size:15px; margin-bottom:6px; }
+.ios-hint ol{ margin:0; padding-inline-start:20px; font-size:13.5px; color:var(--text-muted); }
+.ios-hint .ios-close{
+  margin-top:12px; width:100%; padding:10px; border-radius:var(--radius-sm);
+  border:1px solid var(--border); background:var(--surface-2); cursor:pointer; font-weight:600;
+}
 </style>
 </head>
 <body>
@@ -378,9 +405,15 @@ button.place-group-title{ border:0; background:none; width:100%; padding:0; font
 
   <header class="topbar">
     <h1>دروس دانشگاه</h1>
-    <button class="theme-btn" id="themeBtn" aria-label="تغییر پوسته">
+    <div class="top-actions">
+      <button class="install-btn" id="installBtn" type="button" hidden>
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11"/><path d="m7 11 5 5 5-5"/><path d="M5 20h14"/></svg>
+        <span>نصب اپ</span>
+      </button>
+      <button class="theme-btn" id="themeBtn" aria-label="تغییر پوسته">
       <svg viewBox="0 0 24 24" fill="none" stroke-width="1.7" stroke-linecap="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z"/></svg>
     </button>
+    </div>
   </header>
 
   <main>
@@ -450,6 +483,15 @@ button.place-group-title{ border:0; background:none; width:100%; padding:0; font
   </nav>
 </div>
 
+<div class="ios-hint" id="iosHint" hidden>
+  <b>افزودن به صفحه اصلی</b>
+  <ol>
+    <li>دکمه‌ی «اشتراک‌گذاری» (مربع با فلش رو به بالا) پایین Safari رو بزن.</li>
+    <li>پایین بیا و «Add to Home Screen» (افزودن به صفحه اصلی) رو انتخاب کن.</li>
+    <li>روی «Add» بزن.</li>
+  </ol>
+  <button class="ios-close" id="iosClose" type="button">متوجه شدم</button>
+</div>
 <div class="sheet-backdrop" id="sheetBackdrop"></div>
 <div class="sheet" id="sheet">
   <button class="sheet-close" id="sheetClose" aria-label="بستن">✕</button>
@@ -1215,6 +1257,43 @@ document.getElementById("freeNowBtn").addEventListener("click", function(){
   freeEnd.value = String(endMark);
   showFreeRooms();
 });
+
+/* ================= نصب اپ (Add to Home Screen) ================= */
+(function(){
+  var installBtn = document.getElementById("installBtn");
+  var iosHint = document.getElementById("iosHint");
+  var deferredPrompt = null;
+  var isStandalone = function(){
+    return window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone === true;
+  };
+  var isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent) ||
+              (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+
+  // اندروید/کروم/اج: مرورگر وقتی اپ قابل نصب باشه این رویداد رو می‌فرسته
+  window.addEventListener("beforeinstallprompt", function(e){
+    e.preventDefault();
+    deferredPrompt = e;
+    if(!isStandalone()) installBtn.hidden = false;
+  });
+  // iOS رویداد نصب نداره → دکمه رو نشون می‌دیم و راهنما باز می‌شه
+  if(isIOS && !isStandalone()) installBtn.hidden = false;
+
+  installBtn.addEventListener("click", function(){
+    if(deferredPrompt){
+      deferredPrompt.prompt();
+      deferredPrompt.userChoice.then(function(){
+        deferredPrompt = null;
+        installBtn.hidden = true;
+      });
+    } else if(isIOS){
+      iosHint.hidden = false;
+    }
+  });
+  document.getElementById("iosClose").addEventListener("click", function(){ iosHint.hidden = true; });
+  window.addEventListener("appinstalled", function(){
+    deferredPrompt = null; installBtn.hidden = true; iosHint.hidden = true;
+  });
+})();
 
 /* ================= سرویس‌ورکر ================= */
 if("serviceWorker" in navigator){
