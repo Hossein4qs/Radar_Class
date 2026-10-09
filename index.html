@@ -1607,8 +1607,15 @@ document.addEventListener("visibilitychange", function(){ if(!document.hidden) s
   var iosHint = document.getElementById("iosHint");
   var deferredPrompt = null, celebrated = false;
   var isStandalone = function(){
-    return window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone === true;
+    return window.matchMedia("(display-mode: standalone)").matches || window.matchMedia("(display-mode: fullscreen)").matches
+        || window.matchMedia("(display-mode: minimal-ui)").matches || window.navigator.standalone === true;
   };
+  // وضعیت «نصب شده» رو یادمون نگه می‌داریم تا بعد از رفرش دوباره دکمه‌ی نصب نیاد
+  var KEY = "usc_installed";
+  function wasInstalled(){ try{ return localStorage.getItem(KEY) === "1"; }catch(e){ return false; } }
+  function markInstalled(){ try{ localStorage.setItem(KEY, "1"); }catch(e){} }
+  function clearInstalled(){ try{ localStorage.removeItem(KEY); }catch(e){} }
+  if(isStandalone()) markInstalled();          // اپ از روی صفحه‌ی اصلی باز شده
   var isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent) ||
               (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
 
@@ -1616,6 +1623,7 @@ document.addEventListener("visibilitychange", function(){ if(!document.hidden) s
   function celebrate(){
     if(celebrated) return;
     celebrated = true;
+    markInstalled();
     deferredPrompt = null;
     iosHint.hidden = true;
     installBtn.hidden = false;
@@ -1634,10 +1642,11 @@ document.addEventListener("visibilitychange", function(){ if(!document.hidden) s
   window.addEventListener("beforeinstallprompt", function(e){
     e.preventDefault();
     deferredPrompt = e;
-    if(!isStandalone() && !celebrated) installBtn.hidden = false;
+    // اگه مرورگر خودش میگه قابل نصبه، یعنی نصب نیست (مثلاً بعد از حذف اپ) → نشانه‌ی قبلی پاک می‌شه
+    if(!isStandalone() && !celebrated){ clearInstalled(); installBtn.hidden = false; }
   });
   // iOS رویداد نصب نداره → دکمه رو نشون می‌دیم و راهنما باز می‌شه
-  if(isIOS && !isStandalone()) installBtn.hidden = false;
+  if(isIOS && !isStandalone() && !wasInstalled()) installBtn.hidden = false;
 
   installBtn.addEventListener("click", function(){
     if(celebrated) return;
@@ -1653,7 +1662,12 @@ document.addEventListener("visibilitychange", function(){ if(!document.hidden) s
       iosHint.hidden = false;
     }
   });
-  document.getElementById("iosClose").addEventListener("click", function(){ iosHint.hidden = true; });
+  // iOS نصب رو به صفحه خبر نمی‌ده؛ بعد از دیدن راهنما فرض می‌کنیم نصب شده و دکمه جمع می‌شه
+  document.getElementById("iosClose").addEventListener("click", function(){
+    iosHint.hidden = true;
+    markInstalled();
+    installBtn.hidden = true;
+  });
   window.addEventListener("appinstalled", celebrate);
 })();
 
