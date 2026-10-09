@@ -1096,9 +1096,9 @@ function selectRoom(place){
   }
   html += "</div></div>";
 
-  // یه ردیف برای هر روز
+  // یه ردیف برای هر روز؛ کلاس‌های هم‌پوشان (مثلاً ۱۰ تا ۱۲ و ۱۰ تا ۱۳) زیر هم توی «لاین» جدا می‌افتن
+  var ROW_H = 78, EMPTY_H = 46;
   daysShown.forEach(function(d){
-    html += "<div class='sched-row'><div class='day-lbl'>"+DAY_LABEL[d]+"</div><div class='track'>";
     // جلسه‌هایی که دقیقاً هم‌روز و هم‌ساعت‌ان رو یکی می‌کنیم (اغلب یه کلاس که چون
     // ظرفیت/نامش برای چند رشته فرق داره، چندبار توی دیتابیس ثبت شده)
     var groups = {}, order = [];
@@ -1107,25 +1107,30 @@ function selectRoom(place){
       if(!groups[key]){ groups[key] = []; order.push(key); }
       groups[key].push(s);
     });
-    order.forEach(function(key){
-      var group = groups[key], s0 = group[0];
-      var pos = "right:calc("+pct(s0.start-minStart)+" + 1px); width:calc("+pct(s0.end-s0.start)+" - 2px);";
-      var idxs = group.map(function(s){return s.courseIdx;}).join(",");
+    var list = order.map(function(k){ return groups[k]; });
+    list.sort(function(a,b){ return (a[0].start-b[0].start) || (a[0].end-b[0].end); });
+    var laneEnds = [];
+    list.forEach(function(g){
+      var lane = -1;
+      for(var i=0;i<laneEnds.length;i++){ if(laneEnds[i] <= g[0].start){ lane = i; break; } }
+      if(lane === -1){ lane = laneEnds.length; laneEnds.push(0); }
+      laneEnds[lane] = g[0].end;
+      g.lane = lane;
+    });
+    var rowH = laneEnds.length ? laneEnds.length*ROW_H : EMPTY_H;
+    html += "<div class='sched-row'><div class='day-lbl' style='height:"+rowH+"px'>"+DAY_LABEL[d]+"</div><div class='track' style='height:"+rowH+"px'>";
+    list.forEach(function(group){
+      var s0 = group[0];
+      var pos = "right:calc("+pct(s0.start-minStart)+" + 1px); width:calc("+pct(s0.end-s0.start)+" - 2px);"
+              + "top:"+(group.lane*ROW_H+5)+"px; height:"+(ROW_H-10)+"px; bottom:auto;";
+      var idxs = uniq(group.map(function(s){return String(s.courseIdx);})).join(",");
       var time = fmtMin(s0.start)+"–"+fmtMin(s0.end);
-      if(group.length === 1){
-        var c = COURSES[s0.courseIdx];
-        html += "<button class='block' style='"+pos+"' data-idxs='"+idxs+"'>"
-              + "<div class='b-title'>"+escapeHTML(c["نام درس"]||"")+"</div>"
-              + "<div class='b-sub'>"+time+"</div>"
-              + "</button>";
-      } else {
-        var titles = group.map(function(s){ return COURSES[s.courseIdx]["نام درس"]||""; }).join(" / ");
-        html += "<button class='block' style='"+pos+"' data-idxs='"+idxs+"'>"
-              + "<span class='b-count'>"+group.length+"</span>"
-              + "<div class='b-title'>"+escapeHTML(titles)+"</div>"
-              + "<div class='b-sub'>"+time+"</div>"
-              + "</button>";
-      }
+      var titles = uniq(group.map(function(s){ return COURSES[s.courseIdx]["نام درس"]||""; })).join(" / ");
+      html += "<button class='block' style='"+pos+"' data-idxs='"+idxs+"'>"
+            + (group.length>1 ? "<span class='b-count'>"+group.length+"</span>" : "")
+            + "<div class='b-title'>"+escapeHTML(titles)+"</div>"
+            + "<div class='b-sub'>"+time+"</div>"
+            + "</button>";
     });
     html += "</div></div>";
   });
