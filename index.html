@@ -348,6 +348,19 @@ button.place-group-title{ border:0; background:none; width:100%; padding:0; font
 .car-btn:active:not(:disabled){ transform:scale(.88); }
 .car-count{ display:inline-block; }
 
+.fchips{ display:flex; gap:6px; margin:10px 2px 0; }
+.fchip{ border:1px solid var(--border); background:var(--surface); border-radius:99px; padding:4px 14px; font-size:13px; color:var(--text-muted); cursor:pointer; }
+.fchip.sel{ background:var(--free-soft); border-color:var(--free); color:var(--free); font-weight:600; }
+.entry-strip{ display:flex; flex-direction:column; gap:6px; margin-top:10px; }
+.entry-strip:empty{ display:none; }
+.entry{ display:flex; align-items:center; gap:8px; width:100%; text-align:right; padding:9px 12px; border-radius:var(--radius); border:1px dashed var(--free); background:var(--free-soft); cursor:pointer; color:var(--text); }
+.entry .en-name{ flex:1; font-weight:600; font-size:14px; }
+.entry .kind{ font-size:11px; padding:2px 8px; border-radius:99px; background:var(--surface); color:var(--text-muted); }
+.entry .en-go{ font-size:12px; color:var(--free); white-space:nowrap; }
+.back-btn{ display:inline-flex; align-items:center; gap:6px; margin:12px 2px 0; padding:6px 14px; border-radius:99px; border:1px solid var(--border); background:var(--surface); cursor:pointer; font-size:13px; }
+#view-search.sched-mode #searchMain{ display:none; }
+#view-search:not(.sched-mode) #profResult{ display:none; }
+
 /* ---------- tab bar ---------- */
 .tabbar{
   position:fixed; bottom:0; left:0; right:0; margin-inline:auto; width:min(100%,560px);
@@ -559,11 +572,21 @@ html.theme-fade, html.theme-fade *{
   </header>
 
   <main>
-    <!-- ===== تب جستجو ===== -->
+    <!-- ===== تب درس‌ها (جستجوی درس/استاد + جدول هفتگی) ===== -->
     <section class="view active" id="view-search">
       <input class="search-input" id="searchInput" type="text" placeholder="نام درس یا نام استاد را جستجو کنید…" autocomplete="off">
-      <div class="result-count" id="searchCount"></div>
-      <div class="card-list" id="searchResults"></div>
+      <div id="searchMain">
+        <div class="fchips" id="searchChips" role="group" aria-label="فیلتر نتایج">
+          <button class="fchip sel" data-f="all" type="button">همه</button>
+          <button class="fchip" data-f="course" type="button">درس</button>
+          <button class="fchip" data-f="prof" type="button">استاد</button>
+        </div>
+        <div class="entry-strip" id="entryStrip"></div>
+        <div class="result-count" id="searchCount"></div>
+        <div class="card-list" id="searchResults"></div>
+        <div class="empty-state" id="searchEmpty">اسم درس یا استاد رو بنویس. برای دیدن جدول هفتگی، روی پیشنهاد بالای نتایج بزن.</div>
+      </div>
+      <div id="profResult"></div>
     </section>
 
     <!-- ===== تب وضعیت کلاس ===== -->
@@ -575,17 +598,6 @@ html.theme-fade, html.theme-fade *{
       </div>
       <div id="roomEmpty" class="empty-state">یه شماره کلاس وارد کن تا برنامه‌ی هفتگی‌ش رو ببینی.</div>
       <div id="roomResult"></div>
-    </section>
-
-    <!-- ===== تب وضعیت درس/استاد ===== -->
-    <section class="view" id="view-prof">
-      <div class="field-label">نام درس یا نام استاد</div>
-      <div class="suggest-box">
-        <input class="search-input" id="profInput" type="text" inputmode="text" placeholder="مثلاً ریاضی عمومی یا نام استاد…" autocomplete="off">
-        <div class="suggest-list" id="profSuggest"></div>
-      </div>
-      <div id="profEmpty" class="empty-state">اسم یه درس یا استاد رو جستجو و انتخاب کن تا جدول زمانی هفتگی‌ش رو ببینی.</div>
-      <div id="profResult"></div>
     </section>
 
     <!-- ===== تب کلاس خالی ===== -->
@@ -615,15 +627,11 @@ html.theme-fade, html.theme-fade *{
     <div class="tab-indicator" id="tabIndicator" aria-hidden="true"></div>
     <button class="tab sel" data-view="search">
       <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3" stroke-linecap="round"/></svg>
-      <span>جستجو</span>
+      <span>درس‌ها</span>
     </button>
     <button class="tab" data-view="room">
       <svg viewBox="0 0 24 24"><rect x="3.5" y="4" width="17" height="16" rx="2.5"/><path d="M3.5 9.5h17M8 4v3M16 4v3" stroke-linecap="round"/></svg>
       <span>وضعیت کلاس</span>
-    </button>
-    <button class="tab" data-view="prof">
-      <svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.6"/><path d="M4.5 20c.9-3.6 3.8-5.6 7.5-5.6s6.6 2 7.5 5.6" stroke-linecap="round"/></svg>
-      <span>درس/استاد</span>
     </button>
     <button class="tab" data-view="free">
       <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2" stroke-linecap="round" stroke-linejoin="round"/></svg>
@@ -784,8 +792,8 @@ if(TIME_MARKS.length===0){ for(var h=8; h<=20; h++) TIME_MARKS.push(h*60); }
 
 /* ================= سوییچ تب‌ها ================= */
 var tabs = document.querySelectorAll(".tab");
-var views = { search: document.getElementById("view-search"), room: document.getElementById("view-room"), prof: document.getElementById("view-prof"), free: document.getElementById("view-free") };
-var TAB_ORDER = ["search","room","prof","free"];
+var views = { search: document.getElementById("view-search"), room: document.getElementById("view-room"), free: document.getElementById("view-free") };
+var TAB_ORDER = ["search","room","free"];
 var tabIndicator = document.getElementById("tabIndicator");
 if(tabIndicator) tabIndicator.style.width = "calc(100% / " + TAB_ORDER.length + ")";
 function moveTabIndicator(name){
@@ -1080,16 +1088,62 @@ sheetContent.addEventListener("click", function(e){
 /* ================= تب جستجو ================= */
 var searchInput = document.getElementById("searchInput"), searchResults = document.getElementById("searchResults"), searchCount = document.getElementById("searchCount");
 var searchTimer = null;
+var searchFilter = "all", entryList = [];
+var searchView = document.getElementById("view-search"), entryStrip = document.getElementById("entryStrip");
+var searchEmpty = document.getElementById("searchEmpty"), profResult = document.getElementById("profResult");
+document.getElementById("searchChips").addEventListener("click", function(e){
+  var b = e.target.closest(".fchip"); if(!b) return;
+  searchFilter = b.dataset.f;
+  this.querySelectorAll(".fchip").forEach(function(c){ c.classList.toggle("sel", c === b); });
+  runSearch();
+});
+function renderEntryStrip(tokens){
+  entryList = [];
+  if(tokens.length){
+    var found = PROF_ENTRIES.filter(function(en){
+      if(searchFilter !== "all" && en.kind !== searchFilter) return false;
+      for(var i=0;i<tokens.length;i++){ if(en.hay.indexOf(tokens[i]) === -1) return false; }
+      return true;
+    });
+    found.sort(function(a,b){
+      var pa = a.hay.indexOf(tokens[0])===0 ? 0 : 1, pb = b.hay.indexOf(tokens[0])===0 ? 0 : 1;
+      return pa - pb;
+    });
+    entryList = found.slice(0,3);
+  }
+  entryStrip.innerHTML = entryList.map(function(en, i){
+    return "<button class='entry' type='button' data-i='"+i+"'><span class='kind'>"+(en.kind==="prof"?"استاد":"درس")+"</span>"
+      + "<span class='en-name'>"+escapeHTML(en.name)+"</span><span class='en-go'>برنامه هفتگی ‹</span></button>";
+  }).join("");
+}
+entryStrip.addEventListener("click", function(e){
+  var b = e.target.closest(".entry"); if(!b) return;
+  var en = entryList[Number(b.dataset.i)]; if(!en) return;
+  pickProfEntry(en);
+  searchView.classList.add("sched-mode");
+  window.scrollTo(0,0);
+});
+profResult.addEventListener("click", function(e){
+  if(!e.target.closest(".back-btn")) return;
+  searchView.classList.remove("sched-mode");
+  profResult.innerHTML = "";
+});
 searchInput.addEventListener("input", function(){
+  searchView.classList.remove("sched-mode");
   clearTimeout(searchTimer);
   searchTimer = setTimeout(runSearch, 150);
 });
 function runSearch(){
   var tokens = normalizePersian(searchInput.value).split(" ").filter(Boolean);
+  searchEmpty.hidden = tokens.length > 0;
+  renderEntryStrip(tokens);
   if(tokens.length===0){ searchResults.innerHTML=""; searchCount.textContent=""; return; }
   var matches = [];
   for(var i=0;i<COURSES.length;i++){
-    var hay = COURSES[i].__search;
+    var c0 = COURSES[i];
+    var hay = searchFilter==="all" ? c0.__search
+      : searchFilter==="course" ? (c0.__n = c0.__n || normalizePersian(c0["نام درس"]||""))
+      : (c0.__p = c0.__p || normalizePersian(c0["نام استاد"]||""));
     var ok = true;
     for(var t=0;t<tokens.length;t++){ if(hay.indexOf(tokens[t]) === -1){ ok=false; break; } }
     if(ok){ matches.push(i); if(matches.length>=150) break; }
@@ -1244,8 +1298,6 @@ function selectRoom(place){
 }
 
 /* ================= تب وضعیت درس/استاد ================= */
-var profInput = document.getElementById("profInput"), profSuggest = document.getElementById("profSuggest");
-var profEmpty = document.getElementById("profEmpty"), profResult = document.getElementById("profResult");
 
 // اگه چند استاد توی یه فیلد باشن (با ، ؛ / یا خط جدید) جداشون می‌کنیم
 function splitProfs(raw){
@@ -1270,52 +1322,6 @@ var PROF_ENTRIES = Object.keys(PROF_MAP).map(function(k){ return PROF_MAP[k]; })
   .concat(Object.keys(COURSE_MAP).map(function(k){ return COURSE_MAP[k]; }));
 PROF_ENTRIES.sort(function(a,b){ return a.name.localeCompare(b.name,"fa"); });
 
-var profList = []; // نتایج فعلیِ لیست پیشنهاد
-function updateProfSuggest(){
-  // جستجو کلمه‌به‌کلمه و مستقل از ترتیب (مثل تب جستجو)
-  var tokens = normalizePersian(profInput.value).split(" ").filter(Boolean);
-  if(tokens.length===0){ profSuggest.classList.remove("show"); profList = []; return; }
-  var found = PROF_ENTRIES.filter(function(en){
-    for(var i=0;i<tokens.length;i++){ if(en.hay.indexOf(tokens[i]) === -1) return false; }
-    return true;
-  });
-  // اونایی که با اولین کلمه شروع می‌شن بالاتر
-  found.sort(function(a,b){
-    var pa = a.hay.indexOf(tokens[0])===0 ? 0 : 1, pb = b.hay.indexOf(tokens[0])===0 ? 0 : 1;
-    return pa - pb;
-  });
-  profList = found.slice(0,30);
-  if(profList.length===0){ profSuggest.classList.remove("show"); return; }
-  profSuggest.innerHTML = profList.map(function(en, i){
-    return "<button data-i='"+i+"' style='--i:"+Math.min(i,8)+"'>"+escapeHTML(en.name)
-      + "<span class='kind "+en.kind+"'>"+(en.kind==="prof"?"استاد":"درس")+"</span></button>";
-  }).join("");
-  profSuggest.classList.add("show");
-}
-profInput.addEventListener("input", function(){
-  if(!profInput.value.trim()){
-    profResult.innerHTML = ""; profEmpty.style.display = "";
-  }
-  updateProfSuggest();
-});
-profInput.addEventListener("keydown", function(e){
-  if(e.key === "Enter" && profList.length){
-    e.preventDefault();
-    pickProfEntry(profList[0]);
-    profSuggest.classList.remove("show");
-    profInput.blur();
-  }
-});
-profSuggest.addEventListener("click", function(e){
-  var btn = e.target.closest("button"); if(!btn) return;
-  var en = profList[Number(btn.dataset.i)]; if(!en) return;
-  pickProfEntry(en);
-  btn.classList.add("rb-pop");
-  setTimeout(function(){ profSuggest.classList.remove("show"); }, 380);
-});
-document.addEventListener("click", function(e){
-  if(!profInput.contains(e.target) && !profSuggest.contains(e.target)) profSuggest.classList.remove("show");
-});
 
 function uniq(arr){ var seen = {}, out = []; arr.forEach(function(x){ if(x && !seen[x]){ seen[x]=1; out.push(x); } }); return out; }
 
@@ -1389,13 +1395,11 @@ function buildScheduleHTML(sessions, mode){
 }
 
 function pickProfEntry(en){
-  profInput.value = en.name;
-  profEmpty.style.display = "none";
   var idxSet = {};
   en.idxs.forEach(function(i){ idxSet[i] = true; });
   var sessions = SESSIONS.filter(function(s){ return idxSet[s.courseIdx]; });
   var mode = en.kind;
-  var title = "<div class='room-title'>"+escapeHTML(en.name)+"</div>";
+  var title = "<button class='back-btn' type='button'>› بازگشت به نتایج</button><div class='room-title'>"+escapeHTML(en.name)+"</div>";
   if(sessions.length === 0){
     profResult.innerHTML = title + "<div class='empty-state'>برای این "+(mode==="prof"?"استاد":"درس")+" زمان‌بندی‌ای ثبت نشده.</div>";
     return;
