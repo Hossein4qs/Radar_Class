@@ -546,6 +546,10 @@ html.theme-fade, html.theme-fade *{
 .info-foot{ margin-top:14px; text-align:center; font-size:12px; color:var(--text-muted); }
 .info-foot a{ color:var(--free); text-decoration:none; font-weight:600; }
 
+/* قفل اسکرول صفحه‌ی پشت وقتی کشوی جزئیات یا اطلاعات بازه */
+html.sheet-open, html.sheet-open body{ overflow:hidden; }
+.sheet, .info-sheet{ overscroll-behavior:contain; -webkit-overflow-scrolling:touch; }
+
 </style>
 </head>
 <body>
@@ -697,6 +701,8 @@ html.theme-fade, html.theme-fade *{
   <div class="info-note">
     اطلاعات این سایت بر اساس دیتابیس گلستان هستش و ممکنه با برنامه دانشگاه کمی اختلاف داشته باشه.
   </div>
+
+  <div class="info-foot"> <a href="https://github.com/hossein4qs" target="_blank" rel="noopener noreferrer">hossein4qs</a></div>
  </div>
 
 <script src="database.js"></script>
@@ -905,6 +911,22 @@ function openSheet(html){
   showSheetEl();
 }
 function closeSheet(){ sheet.classList.remove("show"); backdrop.classList.remove("show"); mergedState = null; }
+/* قفل اسکرول: تا وقتی کشو بازه، فقط خودِ کشو اسکرول می‌شه نه صفحه‌ی پشتش */
+var infoSheetEl = document.getElementById("infoSheet");
+function openedSheet(){
+  return sheet.classList.contains("show") ? sheet : (infoSheetEl && infoSheetEl.classList.contains("show") ? infoSheetEl : null);
+}
+function syncScrollLock(){ document.documentElement.classList.toggle("sheet-open", !!openedSheet()); }
+if(window.MutationObserver){
+  var lockObs = new MutationObserver(syncScrollLock);
+  lockObs.observe(sheet, { attributes:true, attributeFilter:["class"] });
+  if(infoSheetEl) lockObs.observe(infoSheetEl, { attributes:true, attributeFilter:["class"] });
+}
+// iOS گاهی overflow:hidden رو نادیده می‌گیره؛ لمس بیرون از کشو یا روی کشویی که اسکرول نداره رو می‌بندیم
+document.addEventListener("touchmove", function(e){
+  var o = openedSheet(); if(!o) return;
+  if(!o.contains(e.target) || o.scrollHeight <= o.clientHeight + 1) e.preventDefault();
+}, {passive:false});
 document.getElementById("sheetClose").addEventListener("click", closeSheetTransition);
 backdrop.addEventListener("click", closeSheetTransition);
 
